@@ -1,6 +1,6 @@
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1.4';
+var INDEX_VERSION = 'Build 1.5';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -245,9 +245,13 @@ function onStartup(data){
  try{onStartupInner(data);}catch(e){msg.textContent='Startup problem: '+(e&&e.stack?String(e.stack).split('\n').slice(0,3).join(' | '):String(e));}
 }
 function onStartupInner(data){
+ const msg=document.getElementById('loadMsg');const step=t=>{msg.textContent='Step 3 of 3: '+t;};
+ step('reading your info');
  APP.startup=data;APP.email=data.email||'';APP.student=data.student||{};APP.sets=data.sets||[];APP.radioOpen=!!data.radioOpen;
  if(data.audioBases&&data.audioBases.length)APP.audioBases=data.audioBases;
+ step('reading your save');
  loadSave(data.save);
+ step('choosing a screen (email '+(APP.email?'yes':'no')+', period '+(String(APP.student.period||'').trim()||'none')+')');
  if(hasServer()&&!APP.email){showSignin(false);return;}
  if(hasServer()&&!String(APP.student.period||'').trim()){showSignin(true);return;}
  showSetPick();

@@ -170,6 +170,7 @@ select{background:var(--panel2);color:var(--text);border:2px solid var(--muted);
 <section id="loading" class="screen center active">
  <h1>Studio '68</h1>
  <p id="loadMsg">Opening the studio...</p>
+ <p class="small" id="loadBeat"></p>
 </section>
 
 <section id="signin" class="screen center">
@@ -310,6 +311,7 @@ select{background:var(--panel2);color:var(--text);border:2px solid var(--muted);
 </div></section>
 <script>
 document.getElementById('loadMsg').textContent='Step 1 of 3: loading game code...';
+var __beat=0;setInterval(function(){__beat++;var b=document.getElementById('loadBeat');if(b)b.textContent='Build 1.5 · '+__beat+' s';},1000);
 // Shows any startup problem on screen so it can be reported (runs before the main game script).
 window.onerror=function(msg,src,line,col){var el=document.getElementById('loadMsg');
  if(el&&document.getElementById('loading').classList.contains('active'))el.textContent='Startup problem: '+msg+' (line '+line+':'+col+')';};
@@ -482,7 +484,7 @@ RIFFS.sort((a,b)=>GENRES.findIndex(g=>g.k===a.genre)-GENRES.findIndex(g=>g.k===b
 const RIFF=Object.fromEntries(RIFFS.map(r=>[r.id,r]));
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1.4';
+var INDEX_VERSION = 'Build 1.5';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -727,9 +729,13 @@ function onStartup(data){
  try{onStartupInner(data);}catch(e){msg.textContent='Startup problem: '+(e&&e.stack?String(e.stack).split('\n').slice(0,3).join(' | '):String(e));}
 }
 function onStartupInner(data){
+ const msg=document.getElementById('loadMsg');const step=t=>{msg.textContent='Step 3 of 3: '+t;};
+ step('reading your info');
  APP.startup=data;APP.email=data.email||'';APP.student=data.student||{};APP.sets=data.sets||[];APP.radioOpen=!!data.radioOpen;
  if(data.audioBases&&data.audioBases.length)APP.audioBases=data.audioBases;
+ step('reading your save');
  loadSave(data.save);
+ step('choosing a screen (email '+(APP.email?'yes':'no')+', period '+(String(APP.student.period||'').trim()||'none')+')');
  if(hasServer()&&!APP.email){showSignin(false);return;}
  if(hasServer()&&!String(APP.student.period||'').trim()){showSignin(true);return;}
  showSetPick();
