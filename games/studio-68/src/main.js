@@ -1,6 +1,6 @@
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1.3';
+var INDEX_VERSION = 'Build 1.4';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -237,11 +237,14 @@ function modal(id,on){$('#'+id).style.display=on?'flex':'none';}
 function startup(){
  $('#loadMsg').textContent='Step 2 of 3: asking the class Sheet who you are...';
  call('getStartupData').then(onStartup).catch(err=>{
-  $('#loadMsg').textContent='The game could not reach the class Sheet ('+String(err)+'). Reload the page to try again.';
+  document.getElementById('loadMsg').textContent='The game could not reach the class Sheet ('+String(err)+'). Reload the page to try again.';
  });
 }
 function onStartup(data){
- $('#loadMsg').textContent='Step 3 of 3: got an answer from the Sheet...';
+ const msg=document.getElementById('loadMsg');msg.textContent='Step 3 of 3: got an answer from the Sheet...';
+ try{onStartupInner(data);}catch(e){msg.textContent='Startup problem: '+(e&&e.stack?String(e.stack).split('\n').slice(0,3).join(' | '):String(e));}
+}
+function onStartupInner(data){
  APP.startup=data;APP.email=data.email||'';APP.student=data.student||{};APP.sets=data.sets||[];APP.radioOpen=!!data.radioOpen;
  if(data.audioBases&&data.audioBases.length)APP.audioBases=data.audioBases;
  loadSave(data.save);

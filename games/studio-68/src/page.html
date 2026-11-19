@@ -313,6 +313,8 @@ document.getElementById('loadMsg').textContent='Step 1 of 3: loading game code..
 // Shows any startup problem on screen so it can be reported (runs before the main game script).
 window.onerror=function(msg,src,line,col){var el=document.getElementById('loadMsg');
  if(el&&document.getElementById('loading').classList.contains('active'))el.textContent='Startup problem: '+msg+' (line '+line+':'+col+')';};
+window.addEventListener('unhandledrejection',function(e){var el=document.getElementById('loadMsg');var r=e.reason;
+ if(el&&document.getElementById('loading').classList.contains('active'))el.textContent='Startup problem: '+(r&&r.stack?String(r.stack).split('\n').slice(0,3).join(' | '):String(r));});
 setTimeout(function(){var el=document.getElementById('loadMsg');
  if(el&&document.getElementById('loading').classList.contains('active')&&el.textContent.indexOf('problem')<0)
   el.textContent=el.textContent+' (still waiting after 15 seconds)';},15000);
