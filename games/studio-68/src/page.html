@@ -309,3 +309,11 @@ select{background:var(--panel2);color:var(--text);border:2px solid var(--muted);
  <div class="mrow" style="justify-content:center"><button class="ghost" id="backBtn">Back to studio</button><button class="big" id="againBtn">Play again</button></div>
 </div></section>
 <script>
+// Shows any startup problem on screen so it can be reported (runs before the main game script).
+window.onerror=function(msg,src,line,col){var el=document.getElementById('loadMsg');
+ if(el&&document.getElementById('loading').classList.contains('active'))el.textContent='Startup problem: '+msg+' (line '+line+':'+col+')';};
+setTimeout(function(){var el=document.getElementById('loadMsg');
+ if(el&&document.getElementById('loading').classList.contains('active')&&el.textContent.indexOf('problem')<0)
+  el.textContent='Still waiting for the class Sheet... (game started: '+(window.__s68boot?'yes':'no')+')';},15000);
+</script>
+<script>

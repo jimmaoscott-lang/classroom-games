@@ -1,6 +1,6 @@
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1.1';
+var INDEX_VERSION = 'Build 1.2';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -719,6 +719,7 @@ document.addEventListener('keydown',e=>{
 
 // ===== boot =====
 function boot(){
+ window.__s68boot=true;
  $('#codeBtn').onclick=redeemCode;
  $('#enterBtn').onclick=enterStudio;
  $('#stageSpeak').onclick=()=>speak('Your stage name is '+$('#stagePre').value+' '+$('#stageWord').value);
