@@ -72,13 +72,17 @@ Supersedes the "Still to decide" list in `decisions-so-far.md`. Music, song layo
 | Sets | Set number, Set name, Question tab, Open? | Replaces Missions |
 | Question tabs | Question, Correct answer, Wrong answer 1-3, Wrong answer 4, Resource tag, TEKS | Copy straight from The Exiled Crown |
 | Results | Time, Student email, Class period, Set, Question tab, Difficulty, Question, TEKS, Right/Wrong, Accommodations active, Guess flag, Event tag | Written by the game |
-| Song Plays | Time, Student email, Class period, Song name, Song owner, Part, Chart level, Assists, Accuracy, Stars, Score | Not used in reports |
+| Song Plays | Time, Student email, Class period, Song name, Song owner, Part, Chart level, Assists, Accuracy, Stars, Score | Used only on the Student Report |
 | Saves, Radio, Settings | see section 7 | |
 | Goals, TEKS List | same as The Exiled Crown | |
 | Summary | Student email, Student name, Class period, Questions answered, % correct, Highest difficulty answered, Class most-missed questions | Rebuilt from the menu |
 | Progress Report | same columns as The Exiled Crown | Rebuilt from the menu |
+| Class Overview | One block per class period: Roster count, played, not played (with names), class % correct (guesses left out), questions answered, guess-flagged answers (names and counts), top 5 most-missed questions (guesses left out) | Rebuilt by Update reports (Code.gs Build 2) |
+| Student Report | B1 dropdown of every Roster student ("period - name"). Menu "Make student report" rebuilds one printable portrait page: Roster accommodations, totals, IEP goal TEKS progress (first vs latest attempt, change), all TEKS practiced, guess flag dates, songs (count, average accuracy, assists) | One reusable tab; print with File > Print, Portrait, Fit to width |
 
-Teacher menu "Studio 68": Set up tabs, Update reports, Make backup codes, Turn Radio on, Turn Radio off, New season, Check game version.
+Settings rows "Report start date" and "Report end date" (blank = all dates) filter Class Overview and Student Report only. Summary and Progress Report always use all dates.
+
+Teacher menu "Studio 68": Set up tabs, Update reports, Make student report, Make backup codes, Turn Radio on, Turn Radio off, New season, Check game version.
 
 ## 9. Hosting and performance
 - Code.gs `doGet` loads `games/studio-68/game/index.html` from GitHub: `live` branch for students, `main` with `?test=1`. Fallback: the Index.html saved in Apps Script.

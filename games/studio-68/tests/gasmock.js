@@ -12,18 +12,22 @@ function makeEnv(opts){
   setValue(v){return this.setValues([[v]]);}
   clearContent(){for(let i=0;i<this.nr;i++){const R=this.sh.data[this.r-1+i];if(R)for(let j=0;j<this.nc;j++)R[this.c-1+j]='';}return this;}
   setFontWeight(){return this;} setNumberFormat(){return this;}
+  setFontSize(){return this;} setBackground(){return this;} setHorizontalAlignment(){return this;}
+  setDataValidation(v){this.sh.validation=v;return this;} clearDataValidations(){return this;}
+  clear(){return this.clearContent();}
   getFormula(){return '';} getFormulaR1C1(){return '';}
  }
  class Sheet{constructor(name){this.name=name;this.data=[];}
   getLastRow(){for(let i=this.data.length-1;i>=0;i--){if(this.data[i]&&this.data[i].some(v=>v!==''&&v!==undefined&&v!==null))return i+1;}return 0;}
-  getLastColumn(){return Math.max(0,...this.data.map(r=>r?r.length:0));}
+  getLastColumn(){let m=0;for(let i=0;i<this.data.length;i++){const r=this.data[i];if(r&&r.length>m)m=r.length;}return m;}
   getRange(r,c,nr,nc){return new Range(this,r,c,nr,nc);}
   getDataRange(){return new Range(this,1,1,Math.max(1,this.getLastRow()),Math.max(1,this.getLastColumn()));}
+  getMaxRows(){return Math.max(1000,this.data.length);} getMaxColumns(){return Math.max(26,this.getLastColumn());} setColumnWidth(){}
   setFrozenRows(){} copyTo(){const s=new Sheet('copy');s.data=JSON.parse(JSON.stringify(this.data));return {setName:n=>{s.name=n;sheets[n]=s;}};}
  }
- const ss={getSheetByName:n=>sheets[n]||null,insertSheet:n=>(sheets[n]=new Sheet(n)),toast:m=>toasts.push(m),getSpreadsheetTimeZone:()=>'America/Chicago'};
+ const ss={getSheetByName:n=>sheets[n]||null,insertSheet:n=>(sheets[n]=new Sheet(n)),toast:m=>toasts.push(m),getSpreadsheetTimeZone:()=>'America/Chicago',setActiveSheet:()=>{}};
  const env={sheets,toasts,email:opts.email||'',
-  SpreadsheetApp:{getActiveSpreadsheet:()=>ss,flush(){},getUi:()=>({alert:()=>'YES',Button:{YES:'YES'},ButtonSet:{YES_NO:1},createMenu(){return this;},addItem(){return this;},addSeparator(){return this;},addToUi(){}})},
+  SpreadsheetApp:{getActiveSpreadsheet:()=>ss,flush(){},newDataValidation:()=>{const b={list:null,requireValueInList(l){b.list=l;return b;},setAllowInvalid(){return b;},build(){return {list:b.list};}};return b;},getUi:()=>({alert:()=>'YES',Button:{YES:'YES'},ButtonSet:{YES_NO:1},createMenu(){return this;},addItem(){return this;},addSeparator(){return this;},addToUi(){}})},
   Session:{getActiveUser:()=>({getEmail:()=>env.email})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   Utilities:{formatDate:(d)=>d.toISOString().slice(0,10)},

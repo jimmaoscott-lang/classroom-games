@@ -1,6 +1,6 @@
 /**
  * STUDIO '68 - Guitar Hero style review game
- * Code.gs  |  Build 1
+ * Code.gs  |  Build 2 (adds Class Overview and Student Report tabs)
  *
  * Built from The Exiled Crown's reporting system (shared/reporting/exiled-crown-Code.gs.reference).
  * - Serves the game page from GitHub (live branch for students, ?test=1 for main)
@@ -8,10 +8,10 @@
  * - Sets tab picks which question tabs are open
  * - Writes every answer to Results, every song played to Song Plays
  * - Saves tab keeps records, unlocks and songs; Radio tab holds shared songs
- * - Teacher menu "Studio 68": Set up tabs, Update reports, backup codes, Radio on/off, New season
+ * - Teacher menu "Studio 68": Set up tabs, Update reports, Make student report, backup codes, Radio on/off, New season
  */
 
-var GAME_VERSION = 'Build 1';
+var GAME_VERSION = 'Build 2';
 
 // The game page loads straight from GitHub, so new builds need no pasting.
 //   Student link:       .../exec          -> the "live" branch
@@ -96,6 +96,7 @@ function onOpen() {
     .createMenu('Studio 68')
     .addItem('Set up tabs', 'setupTabs')
     .addItem('Update reports', 'updateReports')
+    .addItem('Make student report', 'makeStudentReport')
     .addItem('Make backup codes', 'makeBackupCodes')
     .addSeparator()
     .addItem('Turn Radio on', 'turnRadioOn')
@@ -157,6 +158,9 @@ function setupTabs() {
       'Yes lets students share songs with their class period and play classmates\' songs.']]);
   }
   ensure('Goals', GOALS_HEADERS);
+  ensureReportSettings_();
+  if (!ss.getSheetByName('Student Report')) made.push('Student Report');
+  refreshStudentPicker_();
   toast_(made.length ? 'Made tabs: ' + made.join(', ') + '.' : 'All tabs were already set up.');
 }
 
@@ -390,7 +394,7 @@ function logAnswers(rows) {
   return data.length;
 }
 
-/** One row per song performance. Kept out of all reports. */
+/** One row per song performance. Used only by the Student Report. */
 function logPlay(r) {
   if (!r) return 0;
   var email = who_(r.email);
@@ -702,7 +706,381 @@ function updateReports() {
   });
   writeTab_('Progress Report', PROGRESS_HEADERS, progRows, [6, 9, 11]);
 
-  toast_('Reports updated: ' + sumRows.length + ' summary rows, ' + progRows.length + ' progress rows.');
+  var overview = buildClassOverview_();
+  refreshStudentPicker_();
+
+  toast_('Reports updated: ' + sumRows.length + ' summary rows, ' + progRows.length + ' progress rows, ' +
+    overview.periods + ' class periods on Class Overview.' + (overview.problem ? ' ' + overview.problem : ''));
+}
+
+/* =========================================================
+   REPORT DATES (Settings tab: "Report start date" and "Report end date")
+   Blank means all dates. Used by Class Overview and Student Report only.
+   ========================================================= */
+var REPORT_SETTINGS = [
+  ['Report start date', '', 'Class Overview and Student Report count answers from this date on. Blank = all dates.'],
+  ['Report end date', '', 'Class Overview and Student Report count answers through this date. Blank = all dates.']
+];
+
+/** Adds the two report date rows to Settings if they are missing. */
+function ensureReportSettings_() {
+  var sheet = getOrMakeSheet_('Settings', SETTINGS_HEADERS);
+  var last = sheet.getLastRow();
+  var names = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getDisplayValues().map(function (r) {
+    return String(r[0]).trim().toLowerCase();
+  }) : [];
+  REPORT_SETTINGS.forEach(function (row) {
+    if (names.indexOf(row[0].toLowerCase()) >= 0) return;
+    last = sheet.getLastRow() + 1;
+    sheet.getRange(last, 1, 1, 3).setValues([row]);
+  });
+}
+
+/** Reads the report dates. Returns {start, end, label, problem}. */
+function reportDates_() {
+  ensureReportSettings_();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = ss.getSpreadsheetTimeZone();
+  var sheet = ss.getSheetByName('Settings');
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  var out = { start: null, end: null, label: 'All dates', problem: '' };
+  values.forEach(function (r) {
+    var name = String(r[0]).trim().toLowerCase();
+    if (name !== 'report start date' && name !== 'report end date') return;
+    if (r[1] === '' || r[1] === null) return;
+    var d = r[1] instanceof Date ? new Date(r[1].getTime()) : new Date(String(r[1]));
+    if (isNaN(d.getTime())) { out.problem = 'The ' + r[0] + ' in Settings is not a date, so it was ignored.'; return; }
+    if (name === 'report start date') { d.setHours(0, 0, 0, 0); out.start = d; }
+    else { d.setHours(23, 59, 59, 999); out.end = d; }
+  });
+  function show(d) { return Utilities.formatDate(d, tz, 'M/d/yyyy'); }
+  if (out.start && out.end) out.label = show(out.start) + ' to ' + show(out.end);
+  else if (out.start) out.label = show(out.start) + ' to today';
+  else if (out.end) out.label = 'Through ' + show(out.end);
+  return out;
+}
+
+function inDates_(when, dates) {
+  if (!dates.start && !dates.end) return true;
+  if (isNaN(when.getTime())) return false;
+  if (dates.start && when < dates.start) return false;
+  if (dates.end && when > dates.end) return false;
+  return true;
+}
+
+/** Results rows inside the report dates, as simple objects. */
+function readResultsInDates_(dates) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = ss.getSpreadsheetTimeZone();
+  var sheet = ss.getSheetByName('Results');
+  var out = [];
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, RESULTS_HEADERS.length).getValues().forEach(function (r) {
+    var email = String(r[1] || '').trim().toLowerCase();
+    var question = String(r[6] || '');
+    if (!email || !question || question === 'CONNECTION TEST') return;
+    var when = r[0] instanceof Date ? r[0] : new Date(r[0]);
+    if (!inDates_(when, dates)) return;
+    out.push({
+      email: email,
+      period: String(r[2] || ''),
+      day: isNaN(when.getTime()) ? '' : Utilities.formatDate(when, tz, 'yyyy-MM-dd'),
+      diff: DIFF_RANK[String(r[5] || '').trim().toLowerCase()] || 0,
+      question: question,
+      teks: String(r[7] || '').split(',').map(function (c) { return c.trim(); }).filter(String),
+      right: String(r[8]) === 'Right',
+      accom: String(r[9] || '').split(',').map(function (a) { return a.trim(); }).filter(String),
+      guess: String(r[10]) === 'Yes'
+    });
+  });
+  return out;
+}
+
+function pctText_(correct, scored) {
+  return scored ? Math.round(100 * correct / scored) + '%' : '-';
+}
+
+function niceDay_(isoDay) {   // yyyy-MM-dd -> M/d/yyyy
+  var p = String(isoDay || '').split('-');
+  return p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) + '/' + p[0] : String(isoDay || '');
+}
+
+function byPeriod_(a, b) {
+  return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
+/** Clears a report tab from a row down (values, formats, and dropdowns). */
+function clearFromRow_(sheet, row) {
+  var rows = sheet.getMaxRows() - row + 1;
+  if (rows > 0) sheet.getRange(row, 1, rows, sheet.getMaxColumns()).clear().clearDataValidations();
+}
+
+/** Writes a block of rows (all padded to the same width) starting at a row. */
+function writeBlock_(sheet, row, rows, width) {
+  if (!rows.length) return;
+  var padded = rows.map(function (r) {
+    var out = r.slice(0, width);
+    while (out.length < width) out.push('');
+    return out;
+  });
+  sheet.getRange(row, 1, padded.length, width).setValues(padded);
+}
+
+/* =========================================================
+   CLASS OVERVIEW (rebuilt by Studio 68 > Update reports)
+   One block per class period.
+   ========================================================= */
+var OVERVIEW_WIDTH = 6;
+
+function buildClassOverview_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = ss.getSpreadsheetTimeZone();
+  var dates = reportDates_();
+  var roster = readRoster_();
+  var results = readResultsInDates_(dates);
+
+  var periods = {};   // period -> info
+  function per(p) {
+    p = String(p || '(no period)');
+    return periods[p] || (periods[p] = { name: p, roster: [], students: {}, answered: 0, scored: 0, correct: 0, missed: {} });
+  }
+  Object.keys(roster).forEach(function (em) { per(roster[em].period).roster.push(em); });
+
+  results.forEach(function (r) {
+    var info = roster[r.email];
+    var P = per(info ? info.period : r.period);
+    var s = P.students[r.email] || (P.students[r.email] = { answered: 0, guesses: 0 });
+    s.answered++;
+    P.answered++;
+    if (r.guess) { s.guesses++; return; }
+    P.scored++;
+    if (r.right) P.correct++;
+    var m = P.missed[r.question] || (P.missed[r.question] = { wrong: 0, total: 0 });
+    m.total++;
+    if (!r.right) m.wrong++;
+  });
+
+  function nameOf(em) { return roster[em] ? roster[em].name : nameFromEmail_(em); }
+  function byName(a, b) { return nameOf(a).localeCompare(nameOf(b)); }
+
+  var rows = [], bold = [], shade = [];
+  rows.push(["STUDIO '68 CLASS OVERVIEW", '', 'Dates: ' + dates.label, '', 'Updated: ' +
+    Utilities.formatDate(new Date(), tz, 'M/d/yyyy h:mm a')]);
+  bold.push(1);
+  rows.push(['Guess-flagged answers are left out of % correct and most-missed questions.']);
+  rows.push([]);
+
+  Object.keys(periods).sort(byPeriod_).forEach(function (p) {
+    var P = periods[p];
+    var played = Object.keys(P.students);
+    var notPlayed = P.roster.filter(function (em) { return !P.students[em]; }).sort(byName);
+    rows.push(['PERIOD ' + p, 'Roster: ' + P.roster.length, 'Played: ' + played.length,
+      'Not played: ' + notPlayed.length]);
+    bold.push(rows.length); shade.push(rows.length);
+    rows.push(['Not played yet:', notPlayed.length ? notPlayed.map(nameOf).join(', ') : 'Everyone has played']);
+    rows.push(['Class % correct (guesses left out):', pctText_(P.correct, P.scored),
+      'Questions answered:', P.answered]);
+    var flagged = played.filter(function (em) { return P.students[em].guesses > 0; })
+      .sort(function (a, b) { return P.students[b].guesses - P.students[a].guesses || byName(a, b); });
+    rows.push(['Guess-flagged answers:', flagged.length ? flagged.map(function (em) {
+      return nameOf(em) + ' (' + P.students[em].guesses + ')';
+    }).join(', ') : 'None']);
+    var top = Object.keys(P.missed)
+      .filter(function (q) { return P.missed[q].wrong > 0; })
+      .sort(function (a, b) { return P.missed[b].wrong - P.missed[a].wrong || P.missed[b].total - P.missed[a].total; })
+      .slice(0, 5);
+    rows.push(['Most-missed questions:', top.length ? '' : 'None yet']);
+    bold.push(rows.length);
+    top.forEach(function (q, i) {
+      rows.push([(i + 1) + ')', q + '  (missed ' + P.missed[q].wrong + ' of ' + P.missed[q].total + ')']);
+    });
+    rows.push([]);
+  });
+
+  var sheet = ss.getSheetByName('Class Overview') || ss.insertSheet('Class Overview');
+  clearFromRow_(sheet, 1);
+  writeBlock_(sheet, 1, rows, OVERVIEW_WIDTH);
+  sheet.getRange(1, 1).setFontSize(14);
+  bold.forEach(function (r) { sheet.getRange(r, 1, 1, OVERVIEW_WIDTH).setFontWeight('bold'); });
+  shade.forEach(function (r) { sheet.getRange(r, 1, 1, OVERVIEW_WIDTH).setBackground('#d9e2f3'); });
+  sheet.setColumnWidth(1, 240);
+  return { periods: Object.keys(periods).length, problem: dates.problem };
+}
+
+/* =========================================================
+   STUDENT REPORT (menu: Studio 68 > Make student report)
+   Pick a student in cell B1, then run the menu item. One printable page.
+   ========================================================= */
+var REPORT_WIDTH = 6;
+
+/** Dropdown labels like "2 - Jane Doe", sorted by period then name. Returns {labels, byLabel}. */
+function studentChoices_() {
+  var roster = readRoster_();
+  var list = Object.keys(roster).map(function (em) { return roster[em]; });
+  list.sort(function (a, b) { return byPeriod_(a.period, b.period) || a.name.localeCompare(b.name); });
+  var byLabel = {}, labels = [];
+  list.forEach(function (s) {
+    var label = (s.period || '?') + ' - ' + s.name;
+    if (byLabel[label]) label += ' (' + s.email.split('@')[0] + ')';
+    byLabel[label] = s.email;
+    labels.push(label);
+  });
+  return { labels: labels, byLabel: byLabel };
+}
+
+/** Makes the Student Report tab (if needed) and refreshes its dropdown in B1. */
+function refreshStudentPicker_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Student Report') || ss.insertSheet('Student Report');
+  var choices = studentChoices_();
+  sheet.getRange(1, 1, 1, 3).setValues([['Pick a student:', sheet.getRange(1, 2).getValue(),
+    'Then Studio 68 > Make student report']]);
+  sheet.getRange(1, 1).setFontWeight('bold');
+  if (choices.labels.length) {
+    var rule = SpreadsheetApp.newDataValidation().requireValueInList(choices.labels, true)
+      .setAllowInvalid(true).build();
+    sheet.getRange(1, 2).setDataValidation(rule).setBackground('#fff2cc');
+  }
+  [190, 90, 170, 90, 190, 90].forEach(function (w, i) { sheet.setColumnWidth(i + 1, w); });
+  return { sheet: sheet, choices: choices };
+}
+
+function makeStudentReport() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = ss.getSpreadsheetTimeZone();
+  var pick = refreshStudentPicker_();
+  var sheet = pick.sheet;
+  var label = String(sheet.getRange(1, 2).getValue() || '').trim();
+  var email = pick.choices.byLabel[label];
+  if (!email) {
+    clearFromRow_(sheet, 2);
+    toast_(label ? 'That name is not on the Roster list. Pick a student from the dropdown in B1, then run Make student report again.'
+                 : 'Pick a student from the dropdown in B1, then run Make student report again.');
+    return { ok: false };
+  }
+  var roster = readRoster_();
+  var s = roster[email];
+  var dates = reportDates_();
+  var mine = readResultsInDates_(dates).filter(function (r) { return r.email === email; });
+  var goals = readGoals_()[email] || [];
+
+  // ---- Totals and per-TEKS numbers ----
+  var t = { answered: 0, scored: 0, correct: 0, guesses: 0, best: 0, days: {}, accom: {}, guessDays: {} };
+  var teks = {};
+  mine.forEach(function (r) {
+    t.answered++;
+    if (r.guess) { t.guesses++; if (r.day) t.guessDays[r.day] = (t.guessDays[r.day] || 0) + 1; }
+    else { t.scored++; if (r.right) t.correct++; }
+    if (r.diff > t.best) t.best = r.diff;
+    if (r.day) t.days[r.day] = true;
+    r.accom.forEach(function (a) { t.accom[a] = true; });
+    (r.teks.length ? r.teks : ['(no TEKS)']).forEach(function (code) {
+      var k = teks[code] || (teks[code] = { answered: 0, scored: 0, correct: 0, guesses: 0, days: {} });
+      k.answered++;
+      if (r.guess) { k.guesses++; return; }
+      k.scored++;
+      if (r.right) k.correct++;
+      if (r.day) {
+        var d = k.days[r.day] || (k.days[r.day] = { scored: 0, correct: 0 });
+        d.scored++;
+        if (r.right) d.correct++;
+      }
+    });
+  });
+
+  // ---- Songs (Song Plays tab) ----
+  var songs = { count: 0, accTotal: 0, assists: {} };
+  var plays = ss.getSheetByName('Song Plays');
+  if (plays && plays.getLastRow() > 1) {
+    plays.getRange(2, 1, plays.getLastRow() - 1, PLAYS_HEADERS.length).getValues().forEach(function (r) {
+      if (String(r[1] || '').trim().toLowerCase() !== email) return;
+      var when = r[0] instanceof Date ? r[0] : new Date(r[0]);
+      if (!inDates_(when, dates)) return;
+      songs.count++;
+      songs.accTotal += Number(r[8]) || 0;
+      String(r[7] || '').split(',').forEach(function (a) { a = a.trim(); if (a) songs.assists[a] = true; });
+    });
+  }
+
+  // ---- Build the page ----
+  var rosterAccom = [];
+  if (s.readAloud) rosterAccom.push('Read aloud');
+  if (s.extended) rosterAccom.push('Extended time');
+  if (s.reduced) rosterAccom.push('Reduced choices');
+
+  var rows = [], bold = [], shade = [];
+  function add(r) { rows.push(r || []); return rows.length; }
+  function heading(text) { var n = add([text]); bold.push(n); shade.push(n); }
+
+  bold.push(add(["STUDIO '68 STUDENT REPORT", '', '', '', 'Dates: ' + dates.label]));
+  var title = rows.length;
+  add(['Name: ' + s.name, '', 'Class period: ' + (s.period || '-'), '',
+    'Report made: ' + Utilities.formatDate(new Date(), tz, 'M/d/yyyy')]);
+  add(['Accommodations on Roster: ' + (rosterAccom.length ? rosterAccom.join(', ') : 'None')]);
+  add();
+  heading('TOTALS');
+  add(['Questions answered', t.answered, '% correct (guesses left out)', pctText_(t.correct, t.scored),
+    'Guess-flagged answers', t.guesses]);
+  add(['Highest difficulty', t.best ? DIFF_NAME[t.best] : '-', 'Days played', Object.keys(t.days).length,
+    'Accommodations active']);
+  add(['', '', '', '', Object.keys(t.accom).length ? Object.keys(t.accom).join(', ') : 'None']);
+  add();
+
+  heading('IEP GOAL TEKS PROGRESS (from the Goals tab)');
+  if (!goals.length) {
+    add(['No IEP goal TEKS on the Goals tab for this student.']);
+  } else {
+    bold.push(add(['TEKS', 'Answered', '% correct', 'First attempt', 'Latest attempt', 'Change']));
+    goals.forEach(function (code) {
+      var k = teks[code];
+      if (!k || !k.answered) { add([code, 0, '-', 'Not practiced yet', '', '']); return; }
+      var dayKeys = Object.keys(k.days).sort();
+      var f = k.days[dayKeys[0]], l = k.days[dayKeys[dayKeys.length - 1]];
+      var change = '-';
+      if (dayKeys.length > 1) {
+        var pts = Math.round(100 * l.correct / l.scored) - Math.round(100 * f.correct / f.scored);
+        change = (pts > 0 ? '+' : '') + pts + ' points';
+      } else if (dayKeys.length === 1) change = 'One day only';
+      add([code, k.answered, pctText_(k.correct, k.scored),
+        dayKeys.length ? niceDay_(dayKeys[0]) + ': ' + pctText_(f.correct, f.scored) : '-',
+        dayKeys.length ? niceDay_(dayKeys[dayKeys.length - 1]) + ': ' + pctText_(l.correct, l.scored) : '-',
+        change]);
+    });
+  }
+  add();
+
+  heading('ALL TEKS PRACTICED');
+  var codes = Object.keys(teks).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+  if (!codes.length) add(['No answers in these dates.']);
+  else {
+    bold.push(add(['TEKS', 'Answered', '% correct', 'Guess-flagged']));
+    codes.forEach(function (code) {
+      var k = teks[code];
+      add([code, k.answered, pctText_(k.correct, k.scored), k.guesses]);
+    });
+  }
+  add();
+
+  heading('GUESS FLAG DATES');
+  var gd = Object.keys(t.guessDays).sort();
+  add([gd.length ? gd.map(function (d) { return niceDay_(d) + ' (' + t.guessDays[d] + ')'; }).join(', ') : 'None']);
+  add();
+
+  heading('SONGS');
+  add(['Songs played', songs.count, 'Average accuracy',
+    songs.count ? Math.round(songs.accTotal / songs.count) + '%' : '-', 'Assists used']);
+  add(['', '', '', '', Object.keys(songs.assists).length ? Object.keys(songs.assists).join(', ') : 'None']);
+
+  clearFromRow_(sheet, 2);
+  writeBlock_(sheet, 3, rows, REPORT_WIDTH);
+  sheet.getRange(2 + title, 1).setFontSize(14);
+  bold.forEach(function (r) { sheet.getRange(2 + r, 1, 1, REPORT_WIDTH).setFontWeight('bold'); });
+  shade.forEach(function (r) { sheet.getRange(2 + r, 1, 1, REPORT_WIDTH).setBackground('#d9e2f3'); });
+  sheet.getRange(3, 1, rows.length, REPORT_WIDTH).setHorizontalAlignment('left');
+  ss.setActiveSheet(sheet);
+  toast_('Student report made for ' + s.name + (dates.problem ? '. ' + dates.problem : '.') +
+    ' To print: File > Print, Portrait, Fit to width.');
+  return { ok: true, rows: rows.length };
 }
 
 function sortByPeriodName_(a, b) {
