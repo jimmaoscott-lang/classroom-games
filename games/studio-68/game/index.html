@@ -112,7 +112,7 @@ header.top h1 small{font-family:Inter;font-size:13px;color:var(--muted);margin-l
 #studio.screen.active{display:grid}
 .center{min-height:100vh;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
 .center h1{font-size:clamp(40px,7vw,78px);margin:0;background:linear-gradient(90deg,var(--mustard),var(--orange),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
-.center p{color:var(--muted);max-width:560px;line-height:1.5}
+.center p{color:var(--muted);max-width:560px;line-height:1.5;margin-left:auto;margin-right:auto}
 .card{background:var(--panel);border-radius:18px;padding:20px;width:min(620px,100%);margin-top:16px;text-align:left}
 .card h2{margin:0 0 10px;color:var(--teal);font-size:20px}
 .btnGrid{display:flex;flex-wrap:wrap;gap:8px}
@@ -471,7 +471,7 @@ RIFFS.sort((a,b)=>GENRES.findIndex(g=>g.k===a.genre)-GENRES.findIndex(g=>g.k===b
 const RIFF=Object.fromEntries(RIFFS.map(r=>[r.id,r]));
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1';
+var INDEX_VERSION = 'Build 1.1';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -1189,7 +1189,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ===== boot =====
-window.addEventListener('DOMContentLoaded',()=>{
+function boot(){
  $('#codeBtn').onclick=redeemCode;
  $('#enterBtn').onclick=enterStudio;
  $('#stageSpeak').onclick=()=>speak('Your stage name is '+$('#stagePre').value+' '+$('#stageWord').value);
@@ -1213,5 +1213,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  $('#againBtn').onclick=()=>{show('studio');renderStudio();openStage(STAGE_SONG);};
  $('#backBtn').onclick=()=>{show('studio');renderStudio();if(STAGE_SONG&&STAGE_SONG.fromRadio)openRadio();};
  startup();
-});
+}
+// Apps Script may load the page after DOMContentLoaded has already fired, so start right away when it has.
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 </script></body></html>
