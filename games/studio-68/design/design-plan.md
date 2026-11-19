@@ -49,7 +49,7 @@ Supersedes the "Still to decide" list in `decisions-so-far.md`. Music, song layo
 ## 5. Economy
 - 7 packs. Folk '65 is free; the other 6 cost 2 records each.
 - Every pack has 3 riffs per part (84 riffs). In each part: riff 1 costs 1, riff 2 costs 1, riff 3 costs 2. Folk riff 1 for drums, bass, and rhythm stays free.
-- Everything costs about 100 records. Students preview any riff before buying and only unlock what they want.
+- Everything costs 121 records (12 for packs, 109 for riffs). Students preview any riff before buying and only unlock what they want.
 - After everything is unlocked, a Platinum badge shows and records keep counting.
 
 ## 6. Play mode scoring (unchanged from mockup)

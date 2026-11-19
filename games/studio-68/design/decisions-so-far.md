@@ -26,10 +26,4 @@ Mockup: `games/studio-68/mockup/index.html` (also https://claude.ai/artifact/TcW
 - Apps Script web app on the district account, loader pattern from The Exiled Crown (GitHub `live` branch for students, `main` with `?test=1`).
 
 ## Still to decide
-1. Which Exiled Crown reporting pieces carry over or change; whether play data (accuracy, streak, stars) goes in teacher reports.
-2. Guessing detection in the question phase.
-3. Accommodations (read aloud, extended time, reduced choices) and whether play mode needs any (for example a slower speed or fewer lanes).
-4. Difficulty levels and how they tie to questions; question supply per session versus riff costs.
-5. Own Sheet template or shared with The Exiled Crown.
-6. Chromebook performance (page about 1.5 MB with embedded samples; could load audio from jsDelivr instead).
-7. Saving songs between sessions, and playing classmates' songs.
+All settled on Nov 19, 2026. See `design-plan.md`.
