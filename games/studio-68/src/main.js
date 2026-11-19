@@ -1,6 +1,6 @@
 
 // ===== Studio '68 game page =====
-var INDEX_VERSION = 'Build 1.5';
+var INDEX_VERSION = 'Build 1.6';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
