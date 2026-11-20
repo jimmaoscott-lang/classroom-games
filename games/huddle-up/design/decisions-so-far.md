@@ -4,7 +4,7 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
 
 ## Game
 - Football review game. Student is the coach, calls plays; huddle questions decide how well the play is carried out.
-- Modes: Solo vs computer (difficulty = how often the computer misses its huddle: Easy 40%, Normal 25%, Hard 10%, Expert 0%); Head-to-Head on two computers (main 2-player mode, 4-letter game code, polling every 1-2 s through CacheService); Hot seat on one computer (backup, Player 2 signs in with backup code).
+- Modes: Solo vs computer (difficulty = how often the computer misses its huddle: Easy 40%, Normal 25%, Hard 10%, Expert 0%); Head-to-Head on two computers (the only 2-player mode, 4-letter game code, polling every 1-2 s through CacheService). Hot seat mode dropped 11/20/2026 (Mr. Scott's call); build steps renumbered: 7 special teams, 8 Google Sheet (Code.gs) and reports, 9 classroom test and balance.
 - Plays: offense Run Inside, Run Outside, Short Pass, Deep Pass, Play Action; defense Blitz, Zone, Man Coverage, Stack the Box. Special teams use the same huddle.
 - Result weights: matchup ~40%, huddle ~35%, ratings ~15%, luck ~10%. A team that answers right should usually beat a higher-rated team that misses.
 
@@ -55,8 +55,8 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
   - Computer play calls: down and distance first, then game situation (short field: fewer deep passes; behind late: throw more and blitz more; ahead late: run more and play zone). Then it reads the student's last 6 calls on that side and leans toward the call that beats the habit. When the read works, the result banner says "Comets coach is keying on your Run Inside. Mix it up!"
   - Play calling is the same at every difficulty. Difficulty still only sets how often the computer misses each huddle question (Easy 40%, Normal 25%, Hard 10%, Expert 0%) and its break points (2/4/5/6).
   - The computer goes through the same huddle as the student: a first miss gives a random penalty (on-field effect or a player in the play loses 2 rating), a second miss gives the full consequence (Comets delay of game on offense, missed assignment on defense), and 3 misses in a row shake up a Comets player (trainer icon on their side too).
-  - 4th down: goes for it on 4th & 1 past its own 30, 4th & 3 or less inside the Pelicans 40, behind late on 4th & 10 or less, and on the last play unless ahead. Ahead late it only goes on 4th & 1 inside the 40. Field goals join in step 8.
-  - Game length is now a setting: Quick (6 plays a quarter), Standard (12, the default), Full Period (18). Title screen has test pickers for game length and computer difficulty (`?len=Quick`, `?diff=Hard` also work). The teacher gear menu with the PIN comes with the Sheet in step 9.
+  - 4th down: goes for it on 4th & 1 past its own 30, 4th & 3 or less inside the Pelicans 40, behind late on 4th & 10 or less, and on the last play unless ahead. Ahead late it only goes on 4th & 1 inside the 40. Field goals join in step 7 (special teams).
+  - Game length is now a setting: Quick (6 plays a quarter), Standard (12, the default), Full Period (18). Title screen has test pickers for game length and computer difficulty (`?len=Quick`, `?diff=Hard` also work). The teacher gear menu with the PIN comes with the Sheet in step 8.
   - Open question for later: play clock (Off/15/20/30) is in the design but what happens when it runs out is not decided yet.
   - Tests: tests/step5-test.js checks tendency reads, late-game calls, 4th down choices, miss rates for each difficulty, Comets delay of game, Comets injuries. Tests run Quick games.
 - Step 6 (Head-to-Head on two computers): built 11/20/2026. Build 0.6.0.
@@ -65,7 +65,7 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
   - 4th down: the offense coach picks Go For It or Punt; the defense coach waits. Punts use the shared seed.
   - Breaks: each coach spends his or her own points; new ratings go with the next Ready. No computer coach in Head-to-Head.
   - Polling: every 1.2 s while waiting on the other coach, every 5 s otherwise. After 45 s of waiting a hint says to press Exit if the other coach left. Exit sends a "left the game" message; the other screen shows it.
-  - Code.gs starter (apps-script/Code.gs + Index.html): serves the page from GitHub (?test=1 = main) and has h2hCreate, h2hJoin, h2hSend, h2hPoll on CacheService (6 hours). Each side writes only its own message keys, so no lock is needed for messages. Step 9 replaces the rest of Code.gs; the Head-to-Head part carries over.
+  - Code.gs starter (apps-script/Code.gs + Index.html): serves the page from GitHub (?test=1 = main) and has h2hCreate, h2hJoin, h2hSend, h2hPoll on CacheService (6 hours). Each side writes only its own message keys, so no lock is needed for messages. Step 8 replaces the rest of Code.gs; the Head-to-Head part carries over.
   - Outside Apps Script (downloaded file or test page) the game uses browser storage, so two windows of the same browser can play each other. `?net=local` forces that.
-  - Sign-in by Google account per player, picking a question set, and writing finished games to the Games tab come with step 9.
+  - Sign-in by Google account per player, picking a question set, and writing finished games to the Games tab come with step 8.
   - Tests: tests/step6-test.js (two windows: codes, join errors, secret calls, same result on both screens, two full games matched play by play, leaving) and tests/step6-gas-test.js (same game through the real Code.gs functions with CacheService mocked, two separate browsers).

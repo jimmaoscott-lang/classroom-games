@@ -5,7 +5,7 @@
  * This starter does two things:
  * - Serves the game page from GitHub (live branch for students, ?test=1 for the newest build on main)
  * - Passes Head-to-Head messages between two computers (game codes, play calls) using CacheService
- * Build step 9 replaces this file with the full version (roster sign-in, Sets, Results, Games tab, reports),
+ * Build step 8 replaces this file with the full version (roster sign-in, Sets, Results, Games tab, reports),
  * built from Studio 68's Code.gs. The Head-to-Head part below carries over unchanged.
  */
 
@@ -68,7 +68,7 @@ function onOpen() {
 /* =========================================================
    HEAD-TO-HEAD (two computers)
    Live game info stays in Apps Script's fast temporary storage (CacheService) for up to 6 hours.
-   Nothing is written to the Sheet here; finished results go to the Games tab in step 9.
+   Nothing is written to the Sheet here; finished results go to the Games tab in step 8.
    Keys:  h2h_CODE          game info (settings, random seed)
           h2h_CODE_guest    set when the second coach joins
           h2h_CODE_SIDE_N   message number N sent by side 'home' or 'away'
