@@ -120,6 +120,20 @@ button{font-family:inherit;cursor:pointer}
 .opts select{font:inherit;font-size:14px;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:4px;padding:3px 6px}
 .bigbtn{width:320px;flex:none}
 .stats{font-size:20px;color:#E6ECF5;line-height:1.6}
+/* head-to-head */
+.modes{display:flex;gap:16px}
+.modes .go{width:250px;flex:none}
+.modes .alt{background:#1D4ED8;color:#fff}.modes .alt:hover{background:#2563EB}
+#netBig{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:120px;letter-spacing:18px;color:#FACC15;line-height:1;padding-left:18px}
+#netMsg{font-size:20px;max-width:720px;line-height:1.45}
+#netJoin{display:flex;gap:14px;align-items:center}
+#joinCode{width:260px;height:72px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:52px;letter-spacing:14px;text-align:center;text-transform:uppercase;background:#14233D;color:#FACC15;border:2px solid #4A5D7C;border-radius:8px}
+#joinCode:focus{outline:none;border-color:#FACC15}
+#netErr{min-height:24px;font-size:17px;color:#FCA5A5}
+.waitbox{flex:1;height:60px;display:flex;align-items:center;justify-content:center;gap:14px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;letter-spacing:.5px;color:#C8D3E3;background:#14233D;border:1px dashed #4A5D7C;border-radius:8px}
+.dots{display:flex;gap:6px}.dots i{width:10px;height:10px;border-radius:50%;background:#FACC15;animation:dot 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#4A5D7C}
 </style></head><body>
 <div id="wrap"><div id="stage">
@@ -153,14 +167,24 @@ button{font-family:inherit;cursor:pointer}
  </div></div>
  <div id="lock"><div class="proto">Ref review</div><div id="lockMsg"></div><div id="lockSecs"></div></div>
  <div class="screen show" id="title">
-  <div class="proto">Test build · Step 5</div>
+  <div class="proto">Test build · Step 6</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="blurb"><span id="lenTxt"></span> Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
   <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
   <div class="opts"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
-  <button class="go bigbtn" id="kick">Kick Off</button>
+  <div class="modes"><button class="go" id="kick">Solo · Kick Off</button><button class="go alt" id="h2hBtn">Head-to-Head</button><button class="go alt" id="joinOpen">Join a Game</button></div>
   <div class="ver" id="ver"></div>
+ </div>
+ <div class="screen" id="net">
+  <div class="proto" id="netTitle">Head-to-Head</div>
+  <div id="netBig"></div>
+  <div id="netMsg"></div>
+  <div id="netJoin"><input id="joinCode" maxlength="4" autocomplete="off" spellcheck="false" aria-label="Game code"><button class="go" id="joinBtn" style="flex:0 0 200px">Join</button></div>
+  <div id="netWait" class="waitbox" style="flex:none;width:520px"><span class="dots"><i></i><i></i><i></i></span><span>Waiting for the other coach to join...</span></div>
+  <div id="netErr"></div>
+  <button class="exit" id="netBack">Back</button>
+  <button class="exit" data-exit>Exit / Start Over</button>
  </div>
  <div class="screen" id="final">
   <div class="proto">Final</div><div class="logo" style="font-size:64px" id="fWin"></div>

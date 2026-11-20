@@ -1,12 +1,17 @@
-// Huddle Up: game flow (build step 5). Pelicans = the student coach; Comets = computer coach.
+// Huddle Up: game flow (build step 6). Solo: Pelicans = the student coach, Comets = computer coach.
+// Head-to-Head: G.me is this computer's team ('home' Pelicans or 'away' Comets), G.net is set (see net.js).
 
-function newGame() {
+function newGame(opts) {
+  opts = opts || {};
   const ratings = {};
-  for (const side of ['home', 'away']) {
-    ratings[side] = {};
-    for (const p of POS) { const v = irnd(60, 70); ratings[side][p] = { start: v, now: v, hurt: 0 }; }
-  }
-  G = {
+  G = { net: opts.net || null };
+  withSeed('ratings', () => { // Head-to-Head: both computers roll the same starting ratings
+    for (const side of ['home', 'away']) {
+      ratings[side] = {};
+      for (const p of POS) { const v = irnd(60, 70); ratings[side][p] = { start: v, now: v, hurt: 0 }; }
+    }
+  });
+  G = { me: opts.me || 'home', net: opts.net || null,
     score: { home: 0, away: 0 }, poss: 'home', ballX: 25, down: 1, toGo: 10, play: 0, points: 0, right: 0, wrong: 0,
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
     accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
@@ -17,7 +22,8 @@ function newGame() {
   G.camX = camTarget(G.ballX, dir());
   updateHud(); showCalls();
 }
-const userOnOffense = () => G.poss === 'home';
+const userOnOffense = () => G.poss === G.me;
+const meN = () => TEAMS[G.me].short, opN = () => TEAMS[other(G.me)].short; // this coach's team, the other team
 function changePoss(team, x) { G.poss = team; G.ballX = clamp(x, 1, 99); G.down = 1; G.toGo = Math.min(10, ytg()); }
 
 // ---------- computer coach ----------
@@ -98,25 +104,26 @@ function showCalls() {
   const calls = $('#calls');
   if (userOnOffense()) {
     if (G.down === 4 && !G.goForIt) {
-      $('#label').textContent = 'Coach Pelicans · 4th down · Your call';
+      $('#label').textContent = `Coach ${meN()} · 4th down · Your call`;
       calls.innerHTML = `<button class="call" id="goFor">Go For It</button><button class="call" id="puntBtn">Punt</button><button class="call" disabled>Field Goal<small>Coming in step 8</small></button>`;
       $('#hint').textContent = 'Punts are automatic until special teams are built (step 8).';
-      $('#goFor').onclick = () => { G.goForIt = true; showCalls(); };
-      $('#puntBtn').onclick = punt;
+      $('#goFor').onclick = () => { if (G.net) sendFourth(true); G.goForIt = true; showCalls(); };
+      $('#puntBtn').onclick = () => { if (G.net) sendFourth(false); punt(); };
       return;
     }
-    $('#label').textContent = 'Coach Pelicans · Offense · Call the play';
+    $('#label').textContent = `Coach ${meN()} · Offense · Call the play`;
     calls.innerHTML = OFF_CALLS.map(c => `<button class="call" data-call="${c}">${c}</button>`).join('');
     $('#hint').textContent = '';
     $$('[data-call]').forEach(b => b.onclick = () => callOffense(b.dataset.call));
   } else {
-    if (G.down === 4 && !cpuGoesForIt()) {
+    if (G.net && G.down === 4 && !G.goForIt) return waitFor('wait4', `4th down · Waiting for the ${opN()} coach to decide...`);
+    if (!G.net && G.down === 4 && !cpuGoesForIt()) {
       $('#label').textContent = 'Comets · 4th down';
       calls.innerHTML = ''; $('#hint').textContent = '';
       G.mode = 'cpuPunt'; setTimeout(() => { if (G.mode === 'cpuPunt') punt(); }, 700);
       return;
     }
-    $('#label').textContent = 'Coach Pelicans · Defense · Call the defense' + (G.down === 4 ? ' · Comets are going for it!' : '');
+    $('#label').textContent = `Coach ${meN()} · Defense · Call the defense` + (G.down === 4 ? ` · ${opN()} are going for it!` : '');
     calls.innerHTML = DEF_CALLS.map(c => `<button class="call" data-call="${c}">${c}</button>`).join('');
     $('#hint').textContent = '';
     $$('[data-call]').forEach(b => b.onclick = () => callDefense(b.dataset.call));
@@ -128,13 +135,15 @@ function showNext(text, fn) {
   $('#nextBtn').onclick = fn;
 }
 function callOffense(call) {
-  G.offCall = call; G.defCall = cpuDefense(); G.hist.off.push(call); G.mods = {}; G.userQ = null;
-  const h = cpuHuddle('defense'); G.cpuQ = h.q; G.cpuNotes = h.notes;
+  G.offCall = call; G.hist.off.push(call); G.mods = {}; G.userQ = null;
+  if (G.net) { G.defCall = null; G.cpuQ = null; G.cpuNotes = []; } // the other coach's call stays secret until the snap
+  else { G.defCall = cpuDefense(); const h = cpuHuddle('defense'); G.cpuQ = h.q; G.cpuNotes = h.notes; }
   openHuddle(1, 'offense');
 }
 function callDefense(call) {
-  G.defCall = call; G.offCall = cpuOffense(); G.hist.def.push(call); G.mods = {}; G.userQ = null;
-  const h = cpuHuddle('offense'); G.cpuQ = h.q; G.cpuNotes = h.notes;
+  G.defCall = call; G.hist.def.push(call); G.mods = {}; G.userQ = null;
+  if (G.net) { G.offCall = null; G.cpuQ = null; G.cpuNotes = []; }
+  else { G.offCall = cpuOffense(); const h = cpuHuddle('offense'); G.cpuQ = h.q; G.cpuNotes = h.notes; }
   setFormation(); // show the defense lining up in its call
   openHuddle(1, 'defense');
 }
@@ -187,16 +196,16 @@ function answer(i) {
     G.userQ = G.attempt === 1 ? 'clean' : 'shaky';
     fb.className = 'good';
     fb.textContent = G.attempt === 1 ? `Correct! Clean ${off ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
-    next.textContent = 'Snap the ball'; next.onclick = snap;
+    next.textContent = G.net ? 'Ready to snap' : 'Snap the ball'; next.onclick = G.net ? sendReady : snap;
   } else {
     G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: i, entry });
     fb.className = 'bad';
     if (G.attempt === 1) {
       fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(off) + ' Answer one more to clear it up.';
       next.textContent = 'Second chance question'; next.onclick = () => openHuddle(2);
-    } else if (off) { fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = delayOfGame; }
-    else { G.userQ = 'blown'; fb.textContent = 'Not quite. Missed assignment! Your defense is out of position, so a big play is more likely.'; next.textContent = 'Snap the ball'; next.onclick = snap; }
-    if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(); }
+    } else if (off) { G.userQ = 'delay'; fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = G.net ? sendReady : delayOfGame; }
+    else { G.userQ = 'blown'; fb.textContent = 'Not quite. Missed assignment! Your defense is out of position, so a big play is more likely.'; next.textContent = G.net ? 'Ready to snap' : 'Snap the ball'; next.onclick = G.net ? sendReady : snap; }
+    if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(G.me); }
     const g = checkGuessing(); if (g) extra += ' ' + g;
     fb.textContent += extra;
   }
@@ -206,19 +215,19 @@ function answer(i) {
 }
 // 3 wrong answers in a row: a random player is shaken up and plays at his starting rating for 3 plays.
 function injurePlayer(team) {
-  team = team || 'home';
+  team = team || G.me;
   const R = G.ratings[team], healthy = POS.filter(p => !R[p].hurt);
   const pool = healthy.filter(p => R[p].now > R[p].start);
   const p = pick(pool.length ? pool : healthy.length ? healthy : POS), r = R[p];
   r.hurt = INJURY_PLAYS;
-  if (team === 'away') { G.cpuInjuries++; return `Comets ${p} shaken up`; }
+  if (team !== G.me) { G.cpuInjuries++; return `${TEAMS[team].short} ${p} shaken up`; }
   G.injuries++;
   return `Three misses in a row: your ${p} is shaken up and plays at his starting rating (${r.start}) for the next ${INJURY_PLAYS} plays.`;
 }
 // Called once per play (snap, flag, or punt): count down shaken-up players on both teams.
 function tickInjuries() {
   const back = [];
-  for (const t of ['home', 'away']) for (const p of POS) { const r = G.ratings[t][p]; if (r.hurt > 0 && --r.hurt === 0) back.push((t === 'away' ? 'Comets ' : '') + p); }
+  for (const t of ['home', 'away']) for (const p of POS) { const r = G.ratings[t][p]; if (r.hurt > 0 && --r.hurt === 0) back.push((t !== G.me ? TEAMS[t].short + ' ' : '') + p); }
   return back.length ? ` · ${back.join(' and ')} back to full strength` : '';
 }
 // Guess flag: 3 wrong in a row that were each too fast to read, or 3 wrong in a row in the same position.
@@ -242,7 +251,7 @@ function lockFor(secs, msg) {
 // First miss: ONE random penalty from the options that can actually happen right now.
 function firstMissPenalty(off) {
   const players = off ? RATINGS_USED[G.offCall][0] : DEF_PLAYERS[G.defCall];
-  const canDrop = players.filter(p => G.ratings.home[p].now > G.ratings.home[p].start);
+  const R = G.ratings[G.me], canDrop = players.filter(p => R[p].now > R[p].start);
   const opts = ['field'];
   if (canDrop.length) opts.push('rating');
   if (G.points > 0) opts.push('point');
@@ -251,7 +260,7 @@ function firstMissPenalty(off) {
     if (off) { G.mods.slowSnap = true; return 'slower snap and worse blocking on this play.'; }
     G.mods.slowRead = true; return 'confusion and a slower read on this play.';
   }
-  if (o === 'rating') { const p = pick(canDrop), r = G.ratings.home[p], was = r.now; r.now = Math.max(r.start, r.now - 2); return `${p} loses 2 rating points (${was} to ${r.now}).`; }
+  if (o === 'rating') { const p = pick(canDrop), r = R[p], was = r.now; r.now = Math.max(r.start, r.now - 2); return `${p} loses 2 rating points (${was} to ${r.now}).`; }
   G.points--; return 'the team loses 1 unspent skill point.';
 }
 function popPoints(n) {
@@ -264,7 +273,7 @@ function closeHuddle() { $('#huddle').classList.remove('show'); stopSpeech(); }
 const ownYards = () => 100 - ytg();
 function delayOfGame() {
   closeHuddle();
-  const who = userOnOffense() ? '' : 'Comets ';
+  const who = userOnOffense() ? '' : opN() + ' ';
   const notes = G.cpuNotes && !userOnOffense() ? G.cpuNotes.map(n => ' · ' + n).join('') : '';
   const back = Math.min(5, Math.floor(ownYards()) / 2);
   const s = dir();
@@ -272,81 +281,87 @@ function delayOfGame() {
   const healed = tickInjuries();
   G.flag = { x: G.ballX + s * (back - 1), d: .45 };
   G.defCall = null; setFormation();
-  banner(`Flag · ${who}Delay of game`, `${userOnOffense() ? '' : 'Comets missed their huddle twice · '}5-yard penalty · Replay ${ord(G.down)} down` + notes + healed + quarterNote(), userOnOffense() ? 'flag' : 'td');
-  G.mode = 'result'; updateHud(); $('#label').textContent = 'Result';
+  banner(`Flag · ${who}Delay of game`, `${userOnOffense() ? '' : opN() + ' missed their huddle twice · '}5-yard penalty · Replay ${ord(G.down)} down` + notes + healed + quarterNote(), userOnOffense() ? 'flag' : 'td');
+  G.mode = 'result'; updateHud(); $('#label').textContent = 'Result'; syncNote();
   showNext(nextLabel(), afterResult);
 }
 function snap() {
   closeHuddle();
-  if (!userOnOffense() && G.cpuQ === 'delay') return delayOfGame();
   const oq = userOnOffense() ? G.userQ : G.cpuQ, dq = userOnOffense() ? G.cpuQ : G.userQ;
-  const res = resolvePlay(G.offCall, G.defCall, oq, dq, G.mods);
-  setFormation();
-  G.res = res; G.plan = planPlay(res); G.mode = 'anim'; G.t0 = performance.now(); G.flag = null;
-  $('#label').textContent = userOnOffense() ? `${G.offCall} vs ${G.defCall}` : `${G.defCall} vs Comets ${G.offCall}`;
+  if (oq === 'delay') return delayOfGame();
+  // Head-to-Head: both computers use the same random numbers for this play, so both see the same result.
+  withSeed('play' + G.play, () => {
+    G.res = resolvePlay(G.offCall, G.defCall, oq, dq, G.mods);
+    setFormation();
+    G.plan = planPlay(G.res);
+  });
+  G.mode = 'anim'; G.t0 = performance.now(); G.flag = null;
+  $('#label').textContent = userOnOffense() ? `${G.offCall} vs ${G.defCall}` : `${G.defCall} vs ${opN()} ${G.offCall}`;
   $('#calls').innerHTML = ''; $('#hint').textContent = '';
 }
 function punt() {
   const s = dir(), K = G.poss, R = other(K), toGoal = ytg();
-  const dist = clamp(Math.round(40 + gauss() * 6), 28, 55);
   let big;
+  const rolls = withSeed('punt' + G.play, () => [clamp(Math.round(40 + gauss() * 6), 28, 55), irnd(0, 10)]), dist = rolls[0];
   G.play++; G.goForIt = false;
   const healed = tickInjuries();
   if (dist >= toGoal) { changePoss(R, ownSpot(R, 20)); big = `${TEAMS[K].short} punt · Touchback`; }
-  else { const ret = irnd(0, 10); changePoss(R, G.ballX + s * (dist - ret)); big = `${TEAMS[K].short} punt · ${dist} yards`; }
+  else { const ret = rolls[1]; changePoss(R, G.ballX + s * (dist - ret)); big = `${TEAMS[K].short} punt · ${dist} yards`; }
   const small = `${TEAMS[R].short} ball on ${spot(G.ballX)} · The punt team comes in step 8` + healed + quarterNote();
   G.defCall = null; setFormation();
   banner(big, small, 'flag');
-  G.mode = 'result'; updateHud();
+  G.mode = 'result'; updateHud(); syncNote();
   showNext(nextLabel(), afterResult);
 }
 function finishPlay() {
-  const r = G.res, s = dir(), O = G.poss, D = other(O), userOff = O === 'home', dN = TEAMS[D].short;
+  const r = G.res, s = dir(), O = G.poss, D = other(O), userOff = O === G.me, dN = TEAMS[D].short, oN = TEAMS[O].short;
   G.play++; G.goForIt = false;
   const healed = tickInjuries();
   let big = '', cls = '';
   const small = [];
   const gainTxt = y => y > 0 ? `${y} yard${y === 1 ? '' : 's'}` : y === 0 ? 'no gain' : `loss of ${-y}`;
-  const good = userOff ? 'td' : 'flag', bad = userOff ? 'flag' : 'td'; // banner colors from the Pelicans' point of view
+  const good = userOff ? 'td' : 'flag', bad = userOff ? 'flag' : 'td'; // banner colors from this coach's point of view
   if (r.kind === 'int') {
     cls = bad; big = userOff ? 'Intercepted!' : 'Interception!';
-    if (r.pick6) { G.score[D] += 7; big = userOff ? 'Pick six! Comets score' : 'Pick six! Touchdown Pelicans!'; changePoss(O, ownSpot(O, 25)); small.push('Returned all the way'); }
+    if (r.pick6) { G.score[D] += 7; big = userOff ? `Pick six! ${dN} score` : `Pick six! Touchdown ${dN}!`; changePoss(O, ownSpot(O, 25)); small.push('Returned all the way'); }
     else if (r.touchback) { changePoss(D, ownSpot(D, 20)); small.push('Caught in the end zone · Touchback'); }
     else { changePoss(D, G.ballX + s * r.spot); small.push(`${dN} ball on ${spot(G.ballX)}`); }
   } else if (r.td) {
-    G.score[O] += 7; big = userOff ? 'Touchdown!' : 'Comets touchdown'; cls = good;
+    G.score[O] += 7; big = userOff ? 'Touchdown!' : `${oN} touchdown`; cls = good;
     small.push(`${r.yds}-yard ${r.kind === 'complete' ? 'pass' : 'run'} · Extra point is automatic for now`);
     changePoss(D, ownSpot(D, 25));
   } else if (r.safety) {
     G.score[D] += 2; big = 'Safety!'; cls = bad;
     small.push(`${dN} get 2 points and the ball`); changePoss(D, ownSpot(D, 30));
   } else if (r.fumble) {
-    G.ballX += s * r.yds; big = userOff ? 'Fumble! Comets recover' : 'Fumble! Pelicans recover'; cls = bad;
+    G.ballX += s * r.yds; big = `Fumble! ${dN} recover`; cls = bad;
     changePoss(D, G.ballX); small.push(`${dN} ball on ${spot(G.ballX)}`);
   } else {
     if (r.kind === 'incomplete') { big = userOff ? 'Incomplete' : 'Incomplete! Pass broken up'; cls = userOff ? '' : 'td'; }
     else if (r.kind === 'sack') { big = userOff ? `Sacked! Loss of ${-r.yds}` : `Sack! Loss of ${-r.yds}`; cls = bad; }
-    else if (r.kind === 'complete') big = userOff ? `Complete! ${gainTxt(r.yds)}` : `Comets complete it · ${gainTxt(r.yds)}`;
+    else if (r.kind === 'complete') big = userOff ? `Complete! ${gainTxt(r.yds)}` : `${oN} complete it · ${gainTxt(r.yds)}`;
     else big = userOff ? (r.yds >= 20 ? `Big run! ${r.yds} yards` : r.yds > 0 ? `Gain of ${r.yds}` : r.yds === 0 ? 'No gain' : `Loss of ${-r.yds}`)
-      : (r.yds >= 20 ? `Comets break it · ${r.yds} yards` : r.yds > 0 ? `Comets gain ${r.yds}` : r.yds === 0 ? 'Stuffed! No gain' : `Stopped! Loss of ${-r.yds}`);
+      : (r.yds >= 20 ? `${oN} break it · ${r.yds} yards` : r.yds > 0 ? `${oN} gain ${r.yds}` : r.yds === 0 ? 'Stuffed! No gain' : `Stopped! Loss of ${-r.yds}`);
     const y = r.kind === 'incomplete' ? 0 : r.yds;
     G.ballX += s * y;
     if (y >= G.toGo) { G.down = 1; G.toGo = Math.min(10, ytg()); small.push('First down!'); }
     else { G.down++; G.toGo -= y; }
     if (G.down > 4) { small.push(`Turnover on downs · ${dN} ball`); changePoss(D, G.ballX); }
   }
-  small.push(userOff ? `Comets called ${r.defCall}` : `Comets ran ${r.call}`);
-  if (G.cpuQ === 'shaky') small.push('Comets missed their huddle');
-  if (G.cpuQ === 'blown') small.push('Comets missed their huddle twice · Missed assignment');
+  small.push(userOff ? `${opN()} called ${r.defCall}` : `${opN()} ran ${r.call}`);
+  if (G.cpuQ === 'shaky') small.push(`${opN()} missed their huddle`);
+  if (G.cpuQ === 'blown') small.push(`${opN()} missed their huddle twice · Missed assignment`);
   (G.cpuNotes || []).forEach(n => small.push(n));
-  const key = keyingOn(); if (key) small.push(key);
+  const key = G.net ? '' : keyingOn(); if (key) small.push(key);
   if (G.userQ === 'shaky') small.push('Your second-chance huddle slowed you down');
   if (G.userQ === 'blown') small.push('Missed assignment on your defense');
   banner(big, small.join(' · ') + healed + quarterNote(), cls);
-  G.mode = 'result'; G.resetCam = true; updateHud();
+  G.mode = 'result'; G.resetCam = true; updateHud(); syncNote();
   $('#label').textContent = 'Result';
   showNext(nextLabel(), afterResult);
 }
+// Head-to-Head: a running record of the game state after every play, so tests can check both screens match.
+function syncNote() { if (G.net) (G.syncLog = G.syncLog || []).push([G.play, G.score.home, G.score.away, G.poss, Math.round(G.ballX * 10) / 10, G.down, Math.round(G.toGo * 10) / 10].join(',')); }
 const quarterNote = () => (G.play % PLAYS_PER_QUARTER === 0 && G.play < PLAYS_PER_GAME && G.play !== PLAYS_PER_GAME / 2) ? ` · End of Quarter ${G.play / PLAYS_PER_QUARTER}` : '';
 const nextLabel = () => G.play >= PLAYS_PER_GAME ? 'See final score' : G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone ? 'Halftime' : 'Next play';
 function afterResult() {
@@ -367,7 +382,7 @@ function afterResult() {
   }
   G.brk = { poss: G.poss, score: total };
   if (!why.length) return resume();
-  const cpuNote = cpuBreak();
+  const cpuNote = G.net ? `The ${opN()} coach is spending skill points too.` : cpuBreak();
   // Quarter breaks always show the roster. Other breaks show it only when there are points to spend.
   if (why.includes('quarter') || G.points > 0) return openBreak(why, half, cpuNote, resume);
   resume();
@@ -392,14 +407,14 @@ function openBreak(why, half, cpuNote, resume) {
   G.mode = 'break'; G.breakResume = resume; G.sel = G.sel || null;
   const q = Math.floor((G.play - 1) / PLAYS_PER_QUARTER) + 1;
   $('#bkTitle').textContent = half ? 'Halftime' : why.includes('quarter') ? `End of Quarter ${q}` : why.includes('score') ? 'Break · Score' : 'Break · Change of possession';
-  $('#bkWhy').textContent = `Pelicans ${G.score.home}, Comets ${G.score.away}`;
+  $('#bkWhy').textContent = `${TEAMS.home.short} ${G.score.home}, ${TEAMS.away.short} ${G.score.away}`;
   $('#bkCpu').textContent = cpuNote;
   renderBreak();
   $('#break').classList.add('show');
   if (G.accom.readAloud) speak(`${$('#bkTitle').textContent}. You have ${G.points} skill point${G.points === 1 ? '' : 's'} to spend. Tap a player, then tap plus 1.`);
 }
 function renderBreak() {
-  const R = G.ratings.home;
+  const R = G.ratings[G.me];
   $('#bkPts').textContent = `Skill points: ${G.points}`;
   $('#roster').innerHTML = POS.map(p => {
     const r = R[p];
@@ -420,7 +435,7 @@ function renderBreak() {
 }
 function spendPoint() {
   if (G.mode !== 'break' || !G.sel || G.points < 1) return;
-  const r = G.ratings.home[G.sel]; if (r.now >= RATING_CAP) return;
+  const r = G.ratings[G.me][G.sel]; if (r.now >= RATING_CAP) return;
   r.now = Math.min(RATING_CAP, r.now + RATING_PER_POINT); G.points--; G.spent++;
   updateHud(); renderBreak();
 }
@@ -432,15 +447,17 @@ function closeBreak() {
 function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b1').style.fontSize = b1.length > 24 ? '42px' : ''; $('#b2').textContent = b2 || ''; $('#b2').style.display = b2 ? '' : 'none'; const b = $('#banner'); b.className = ''; void b.offsetWidth; b.className = 'show ' + (cls || ''); }
 function hideBanner() { $('#banner').className = ''; }
 function showFinal() {
-  G.mode = 'final';
+  G.mode = 'final'; if (G.net) netStop();
   $('#fHome').textContent = G.score.home; $('#fAway').textContent = G.score.away;
   const h = G.score.home, a = G.score.away;
-  $('#fWin').textContent = h > a ? 'Pelicans win!' : h < a ? 'Comets win' : 'Tie game';
+  const win = h > a ? 'home' : h < a ? 'away' : '';
+  $('#fWin').textContent = win ? `${TEAMS[win].short} win${win === G.me ? '!' : ''}` : 'Tie game';
   const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length, flagged = G.log.length - scored.length;
   $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
     (flagged ? `<br>Guess-flagged answers (left out of % correct): <b>${flagged}</b>` : '') +
-    `<br>Computer: <b>${DIFF}</b> · missed ${G.cpuMisses || 0} huddle question${G.cpuMisses === 1 ? '' : 's'}` +
+    (G.net ? `<br>Head-to-Head vs the <b>${opN()}</b> coach` : `<br>Computer: <b>${DIFF}</b> · missed ${G.cpuMisses || 0} huddle question${G.cpuMisses === 1 ? '' : 's'}`) +
     `<br>Skill points spent: <b>${G.spent}</b> · unspent: <b>${G.points}</b>${G.injuries ? ` · players shaken up: <b>${G.injuries}</b>` : ''}`;
+  $('#again').textContent = G.net ? 'New game' : 'Play Again';
   $('#final').classList.add('show');
 }
 const ord = n => ['1st', '2nd', '3rd', '4th'][n - 1] || n + 'th';
@@ -455,7 +472,7 @@ function updateHud() {
   $('#sub').textContent = `${TEAMS[G.poss].short} ball · Quarter ${Math.floor(p / PLAYS_PER_QUARTER) + 1} · Play ${p % PLAYS_PER_QUARTER + 1} of ${PLAYS_PER_QUARTER}`;
   $('#chip').textContent = `Skill points: ${G.points}`;
   const hurt = [];
-  for (const t of ['home', 'away']) POS.forEach(p => { const h = G.ratings[t][p].hurt; if (h > 0) hurt.push(`${t === 'away' ? 'Comets ' : ''}${p} shaken up · ${h} play${h > 1 ? 's' : ''}`); });
+  for (const t of ['home', 'away']) POS.forEach(p => { const h = G.ratings[t][p].hurt; if (h > 0) hurt.push(`${t !== G.me ? TEAMS[t].short + ' ' : ''}${p} shaken up · ${h} play${h > 1 ? 's' : ''}`); });
   $('#trainer').classList.toggle('show', hurt.length > 0);
   $('#trainerTxt').textContent = hurt.join(' · ');
 }
@@ -489,13 +506,18 @@ const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTH} game: 4 quarter
 $('#optLen').onchange = $('#optDiff').onchange = () => { applySettings($('#optLen').value, $('#optDiff').value); titleBlurb(); updateHud(); };
 titleBlurb();
 $('#kick').onclick = () => { $('#title').classList.remove('show'); newGame(); };
-$('#again').onclick = () => { $('#final').classList.remove('show'); newGame(); };
-$$('[data-exit]').forEach(b => b.onclick = () => { stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
+$('#again').onclick = () => { $('#final').classList.remove('show'); if (G.net) { newGame(); G.mode = 'title'; $('#title').classList.add('show'); } else newGame(); };
+$('#h2hBtn').onclick = () => { newGame(); hostGame(); };
+$('#joinOpen').onclick = () => { newGame(); joinScreen(); };
+$('#joinBtn').onclick = joinGame;
+$('#joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame(); };
+$('#netBack').onclick = () => { $('#net').classList.remove('show'); $('#title').classList.add('show'); G.mode = 'title'; };
+$$('[data-exit]').forEach(b => b.onclick = () => { netLeave(); $('#net').classList.remove('show'); stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
 $('#hSpeak').onclick = readQuestion;
 $('#plusBtn').onclick = spendPoint;
 $('#bkDone').onclick = closeBreak;
 addEventListener('keydown', e => {
-  if (G && G.mode === 'huddle' && !G.answered) { const k = 'abcd'.indexOf(e.key.toLowerCase()); const n = '1234'.indexOf(e.key); const i = k >= 0 ? k : n; if (i >= 0 && i < G.q.choices.length) answer(i); }
+  if (G && G.mode === 'huddle' && !G.answered && document.activeElement !== $('#joinCode')) { const k = 'abcd'.indexOf(e.key.toLowerCase()); const n = '1234'.indexOf(e.key); const i = k >= 0 ? k : n; if (i >= 0 && i < G.q.choices.length) answer(i); }
 });
 newGame(); G.mode = 'title';
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
