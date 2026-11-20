@@ -31,3 +31,7 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
 
 ## Classroom rules
 - Read-aloud off by default, Exit / Start Over on every screen, short question text, no difficulty picker for students.
+
+## Build status
+- Step 1 (art mockup): done, Look C approved.
+- Step 2 (field prototype): built 11/20/2026. `src/` (page.html, main.js, test-questions.js) builds `game/index.html` with `bash src/build-game.sh`. Look C field drawn on a canvas with the mockup's projection, camera scrolls with the ball, 12-play Pelicans drive vs Comets, Run Inside animated (snap, handoff, blocking, pursuit, tackle), huddle question with second chance, first-miss random penalty, delay of game on second miss, +2/+1 skill points, downs, first downs, touchdowns. Computer defense picks a random call and misses its huddle 25% (Normal). Test switches on the title screen (and `?ra=1`, `?rc=1`). Other plays show "Coming in step 3".

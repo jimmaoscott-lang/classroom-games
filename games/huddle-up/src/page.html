@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base target="_top">
+<title>Huddle Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#050B16;overflow:hidden}
+body{font-family:Inter,system-ui,sans-serif;color:#E6ECF5}
+button{font-family:inherit;cursor:pointer}
+.bc{font-family:'Barlow Condensed',sans-serif}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#stage{position:relative;width:1280px;height:720px;overflow:hidden;background:#0B1526;transform-origin:50% 50%;flex:0 0 auto}
+/* scoreboard */
+#sb{position:absolute;left:0;top:0;width:1280px;height:90px;padding:0 28px;background:#0B1526;border-bottom:3px solid #FACC15;display:flex;align-items:center;justify-content:space-between;z-index:5}
+.side{display:flex;align-items:center;gap:14px;min-width:300px}
+.side.r{justify-content:flex-end}
+.tag{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;letter-spacing:1px;color:#fff;padding:4px 14px;border-radius:4px}
+.score{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:50px;color:#fff;min-width:44px;text-align:center}
+.poss{width:12px;height:8px;border-radius:50%;background:#8B4A1C;border:2px solid #FACC15}
+#mid{display:flex;flex-direction:column;align-items:center;gap:6px}
+#dd{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;color:#FACC15}
+#sub{font-size:14px;color:#A9B6CA}
+/* field */
+#fieldBox{position:absolute;left:0;top:90px;width:1280px;height:450px;overflow:hidden}
+#field{position:absolute;left:0;top:0}
+#banner{position:absolute;left:50%;top:62px;transform:translateX(-50%);min-width:520px;max-width:900px;display:none;text-align:center;z-index:4}
+#banner .b1{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:54px;letter-spacing:1px;color:#0B1526;background:#FACC15;padding:4px 30px;border-radius:6px 6px 0 0;text-transform:uppercase}
+#banner .b2{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:#fff;background:#0B1526;padding:8px 20px;border-radius:0 0 6px 6px;border:1px solid #2A3B57;border-top:none}
+#banner.flag .b1{background:#F59E0B}
+#banner.td .b1{background:#22C55E;color:#fff}
+#banner.show{display:block;animation:slide .35s ease-out}
+@keyframes slide{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+/* panel */
+#panel{position:absolute;left:0;top:540px;width:1280px;height:180px;padding:14px 28px;background:#0B1526;border-top:1px solid #2A3B57;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center}
+#label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;letter-spacing:1px;text-transform:uppercase;color:#E6ECF5}
+#chip{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:#0B1526;background:#FACC15;border-radius:6px;padding:6px 14px}
+#chip.bump{animation:bump .5s}
+@keyframes bump{40%{transform:scale(1.25)}}
+#calls{display:flex;gap:14px}
+.call{flex:1;height:60px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;letter-spacing:.5px;text-transform:uppercase;color:#fff;background:#1D4ED8;border:none;border-radius:8px;position:relative}
+.call:hover:not(:disabled){background:#2563EB}
+.call:disabled{background:#1E2A40;color:#5D6E88;cursor:not-allowed}
+.call small{position:absolute;left:0;right:0;bottom:4px;font-family:Inter;font-size:10px;letter-spacing:0;text-transform:none;font-weight:600}
+.go{height:60px;flex:1;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;letter-spacing:1px;text-transform:uppercase;color:#0B1526;background:#FACC15;border:none;border-radius:8px}
+.go:hover{background:#FDE047}
+.exit{font-family:Inter;font-weight:600;font-size:14px;color:#C8D3E3;background:transparent;border:1px solid #4A5D7C;border-radius:6px;padding:8px 14px;min-height:40px}
+.exit:hover{border-color:#C8D3E3}
+/* huddle */
+#huddle{position:absolute;left:0;top:90px;width:1280px;height:630px;background:rgba(5,11,22,.88);display:none;align-items:center;justify-content:center;z-index:8}
+#huddle.show{display:flex}
+.card{width:1060px;background:#0B1526;border:1px solid #2A3B57;border-top:4px solid #FACC15;border-radius:8px;padding:22px 30px 18px}
+.hhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#hTitle{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;letter-spacing:1px;text-transform:uppercase;color:#FACC15}
+#hTry{font-size:14px;color:#A9B6CA;margin-left:12px}
+#qText{font-size:25px;font-weight:600;line-height:1.35;margin:4px 0 18px;color:#fff}
+.speak{background:#1E3A5F;border:1px solid #4A5D7C;color:#fff;border-radius:6px;font-size:20px;width:46px;height:44px}
+#choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.choice{display:flex;gap:12px;align-items:center;text-align:left;min-height:66px;background:#14233D;color:#E6ECF5;border:2px solid #2A3B57;border-radius:8px;padding:10px 14px;font-size:18px;font-weight:500;line-height:1.3}
+.choice:hover:not(:disabled){border-color:#FACC15}
+.choice .let{flex:0 0 32px;height:32px;border-radius:4px;background:#1D4ED8;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:#fff}
+.choice.right{border-color:#22C55E;background:#12361F}
+.choice.wrong{border-color:#EF4444;background:#3A1218}
+.choice:disabled{cursor:default}
+#fb{min-height:30px;margin-top:14px;font-size:17px;line-height:1.4}
+#fb.good{color:#86EFAC}#fb.bad{color:#FCA5A5}
+.hfoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+#hNext{display:none;min-width:280px;flex:0 0 auto}
+/* pop */
+#pop{position:absolute;left:0;right:0;text-align:center;top:118px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:34px;color:#FACC15;text-shadow:0 2px 0 #0B1526;opacity:0;pointer-events:none;z-index:9}
+#pop.show{animation:pop 1.6s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(20px)}15%{opacity:1;transform:translateY(0)}75%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+/* full screens */
+.screen{position:absolute;inset:0;background:rgba(5,11,22,.9);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:10;text-align:center}
+.screen.show{display:flex}
+.logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:110px;letter-spacing:4px;color:#fff;line-height:.9}
+.logo span{color:#FACC15}
+.proto{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#0B1526;background:#FACC15;padding:4px 14px;border-radius:4px}
+.blurb{max-width:640px;font-size:16px;line-height:1.5;color:#A9B6CA}
+.matchup{display:flex;gap:16px;align-items:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px}
+.opts{display:flex;gap:22px;font-size:14px;color:#A9B6CA;border:1px dashed #4A5D7C;border-radius:8px;padding:10px 16px}
+.opts label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.bigbtn{width:320px;flex:none}
+.stats{font-size:20px;color:#E6ECF5;line-height:1.6}
+.ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#4A5D7C}
+</style></head><body>
+<div id="wrap"><div id="stage">
+ <div id="sb">
+  <div class="side"><div class="tag" id="homeTag" style="background:#0E7C86">PELICANS</div><div class="score" id="homeScore">0</div><div class="poss" id="homePoss"></div></div>
+  <div id="mid"><div id="dd">1st &amp; 10 · Ball on PEL 25</div><div id="sub">Prototype drive · Play 1 of 12</div></div>
+  <div class="side r"><div class="score" id="awayScore">0</div><div class="tag" id="awayTag" style="background:#5B2A86">COMETS</div></div>
+ </div>
+ <div id="fieldBox"><canvas id="field" width="1280" height="450"></canvas>
+  <div id="banner"><div class="b1" id="b1"></div><div class="b2" id="b2"></div></div>
+ </div>
+ <div id="panel">
+  <div class="row"><div id="label">Coach Pelicans · Offense · Call the play</div><div id="chip">Skill points: 0</div></div>
+  <div id="calls"></div>
+  <div class="row"><div id="hint" style="font-size:13px;color:#6B7C96"></div><button class="exit" data-exit>Exit / Start Over</button></div>
+ </div>
+ <div id="pop"></div>
+ <div id="huddle"><div class="card">
+  <div class="hhead"><div><span id="hTitle">Offense huddle · Run Inside</span><span id="hTry"></span></div><button class="speak" id="hSpeak" title="Read aloud">🔊</button></div>
+  <div id="qText"></div>
+  <div id="choices"></div>
+  <div id="fb"></div>
+  <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="hNext">Snap the ball</button></div>
+ </div></div>
+ <div class="screen show" id="title">
+  <div class="proto">Field prototype · Step 2</div>
+  <div class="logo">HUDDLE <span>UP</span></div>
+  <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
+  <div class="blurb">You coach the Pelicans offense for 12 plays. Call Run Inside, answer the huddle question, and watch the play. Right answers mean clean blocking and big gains. The other plays, defense, and the full game come in the next build steps.</div>
+  <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label></div>
+  <button class="go bigbtn" id="kick">Kick Off</button>
+  <div class="ver" id="ver"></div>
+ </div>
+ <div class="screen" id="final">
+  <div class="proto">Prototype complete</div>
+  <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span id="fHome" class="score">0</span><span style="color:#A9B6CA">–</span><span id="fAway" class="score">0</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
+  <div class="stats" id="fStats"></div>
+  <button class="go bigbtn" id="again">Play Again</button>
+  <button class="exit" data-exit>Exit / Start Over</button>
+ </div>
+</div></div>
+<script>
+// HUDDLEUP_PAGE
