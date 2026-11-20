@@ -1,5 +1,5 @@
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.5.1 pass rush';
+var INDEX_VERSION = '0.5.2 position duels';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -42,14 +42,23 @@ const MATCHUP = {
   'Deep Pass':   { 'Blitz': 'R', 'Zone': 'B', 'Man Coverage': 'E', 'Stack the Box': 'G' },
   'Play Action': { 'Blitz': 'B', 'Zone': 'G', 'Man Coverage': 'E', 'Stack the Box': 'G' },
 };
-// Ratings compared on each play (offense side vs defense side).
+// Ratings compared on each play (offense side vs defense side). Also the players "in the play" for penalties.
 const RATINGS_USED = {
   'Run Inside':  [['RB', 'O-Line'], ['D-Line', 'Linebacker']],
   'Run Outside': [['RB', 'O-Line'], ['D-Line', 'Linebacker']],
-  'Short Pass':  [['QB', 'WR'], ['Secondary', 'Linebacker']],
+  'Short Pass':  [['QB', 'WR', 'O-Line'], ['Secondary', 'D-Line']],
   'Deep Pass':   [['QB', 'WR', 'O-Line'], ['Secondary', 'D-Line']],
-  'Play Action': [['QB', 'WR'], ['Linebacker', 'Secondary']],
+  'Play Action': [['QB', 'WR', 'O-Line', 'RB'], ['Linebacker', 'Secondary', 'D-Line']],
 };
+// Position duels: each one nudges the part of the play that position controls.
+//   line:  O-Line vs D-Line (vs D-Line + Linebacker on a Blitz)  -> run push, sacks
+//   back:  RB vs Linebacker                                      -> breaking tackles, big runs, fumbles
+//   arm:   QB vs Secondary                                       -> completions, interceptions
+//   hands: WR vs Secondary                                       -> completions, yards after catch
+//   fake:  RB vs Linebacker (Play Action only)                   -> completions on the fake
+// Tuned with tests/balance-test.js so right answers still beat an 80-rated team that misses,
+// and a whole roster at 100 that misses only plays about even with a 60s team that answers.
+let DUEL_SPAN = 25, DUEL_K = 0.6, DUEL_T = 0.08; // a 25-point rating gap is the biggest edge a duel can give
 // Players "in the play" for the first-miss rating penalty.
 const DEF_PLAYERS = { 'Blitz': ['D-Line', 'Linebacker'], 'Zone': ['Secondary', 'Linebacker'], 'Man Coverage': ['Secondary', 'Linebacker'], 'Stack the Box': ['D-Line', 'Linebacker'] };
 const TEAMS = {

@@ -30,10 +30,14 @@ const defense = () => G.actors.filter(a => a.side === 'def');
 // oq: offense huddle 'clean' | 'shaky'. dq: defense huddle 'clean' | 'shaky' | 'blown'.
 // mods: on-field first-miss effects (slowSnap hurts the offense, slowRead hurts the defense).
 function huddleTerm(oq, dq) { return clamp((oq === 'clean' ? 0.6 : -0.4) + (dq === 'clean' ? -0.3 : dq === 'shaky' ? 0.4 : 0.9), -1, 1); }
-function ratingTerm(call, O, D) {
-  const [op, dp] = RATINGS_USED[call];
-  const avg = (team, ps) => ps.reduce((sum, p) => sum + effRating(team, p), 0) / ps.length;
-  return clamp((avg(O, op) - avg(D, dp)) / 10, -1, 1);
+function duels(call, defCall, O, D) {
+  const r = (t, p) => effRating(t, p);
+  const d = (a, b) => clamp((a - b) / DUEL_SPAN, -1, 1);
+  const rush = defCall === 'Blitz' ? (r(D, 'D-Line') + r(D, 'Linebacker')) / 2 : r(D, 'D-Line');
+  const x = { line: d(r(O, 'O-Line'), rush), back: d(r(O, 'RB'), r(D, 'Linebacker')), arm: d(r(O, 'QB'), r(D, 'Secondary')), hands: d(r(O, 'WR'), r(D, 'Secondary')), fake: d(r(O, 'RB'), r(D, 'Linebacker')) };
+  const used = call.startsWith('Run') ? ['line', 'back'] : call === 'Play Action' ? ['line', 'arm', 'hands', 'fake'] : ['line', 'arm', 'hands'];
+  x.avg = used.reduce((n, k) => n + x[k], 0) / used.length;
+  return x;
 }
 function effRating(team, p) { const r = G.ratings[team][p]; return r.hurt > 0 ? r.start : r.now; }
 function resolvePlay(call, defCall, oq, dq, mods) {
@@ -41,31 +45,35 @@ function resolvePlay(call, defCall, oq, dq, mods) {
   const O = G.poss, D = other(O), toGoal = ytg(), own = 100 - toGoal;
   const mk = MATCHUP[call][defCall], risky = mk === 'R';
   const m = mk === 'G' ? 1 : mk === 'B' ? -1 : 0;
-  let T = 0.40 * m + 0.35 * huddleTerm(oq, dq) + 0.15 * ratingTerm(call, O, D) + 0.10 * rnd(-1, 1);
+  const X = duels(call, defCall, O, D), k = DUEL_K;
+  let T = 0.40 * m + 0.35 * huddleTerm(oq, dq) + DUEL_T * X.avg + 0.10 * rnd(-1, 1);
   if (mods.slowSnap) T -= 0.25;
   if (mods.slowRead) T += 0.25;
   const big = dq === 'blown' ? 0.25 : 0;
-  const res = { call, defCall, oq, dq, T, kind: 'run', yds: 0 };
-  const yac = () => Math.max(0, Math.round(1.5 + T * 4 + gauss() * 2.5)) + (Math.random() < 0.04 + 0.12 * Math.max(T, 0) + big ? irnd(10, 35) : 0);
+  const res = { call, defCall, oq, dq, T, duels: X, kind: 'run', yds: 0 };
+  const yac = () => Math.max(0, Math.round(1.5 + T * 4 + k * 1.2 * X.hands + gauss() * 2.5)) + (Math.random() < 0.04 + 0.12 * Math.max(T, 0) + k * 0.03 * X.hands + big ? irnd(10, 35) : 0);
   if (call === 'Run Inside' || call === 'Run Outside') {
     const outside = call === 'Run Outside';
-    let y = outside ? Math.round(2.5 + T * 6 + gauss() * 3.2) : Math.round(2.5 + T * 5 + gauss() * 2);
-    if (T > 0.1 && Math.random() < 0.02 + 0.08 * T + big) y += irnd(10, 35);
+    const push = k * (outside ? 0.6 * X.line + 1.0 * X.back : 1.0 * X.line + 0.7 * X.back); // inside runs need the line, outside runs need the back
+    let y = outside ? Math.round(2.5 + T * 6 + push + gauss() * 3.2) : Math.round(2.5 + T * 5 + push + gauss() * 2);
+    if (T > 0.1 && Math.random() < 0.02 + 0.08 * T + k * 0.03 * X.back + big) y += irnd(10, 35);
     res.yds = Math.max(y, outside ? -6 : -4);
-    if (Math.random() < 0.012 + (T < -0.4 ? 0.025 : 0)) res.fumble = true;
+    if (Math.random() < clamp(0.012 - k * 0.006 * X.back + (T < -0.4 ? 0.025 : 0), 0.004, 0.06)) res.fumble = true;
   } else {
     const P = {
       'Short Pass':  { sack: .04 - .06 * T + (defCall === 'Blitz' ? .04 : 0), int: .03 - .05 * T, comp: .62 + .33 * T, air: [3, 8] },
       'Deep Pass':   { sack: .06 - .08 * T + (risky ? .12 : 0), int: .06 - .08 * T, comp: .38 + .40 * T + (risky ? .10 : 0) + big, air: [16, 34] },
-      'Play Action': { sack: .05 - .07 * T, int: .04 - .06 * T, comp: .55 + .33 * T, air: [8, 18] },
+      'Play Action': { sack: .05 - .07 * T, int: .04 - .06 * T, comp: .55 + .33 * T + k * .04 * X.fake, air: [8, 18] },
     }[call];
+    // position duels: pass rush vs protection, QB vs Secondary, WR vs Secondary
+    P.sack -= k * 0.045 * X.line; P.int -= k * 0.025 * X.arm; P.comp += k * (0.05 * X.arm + 0.04 * X.hands);
     const r = Math.random();
     const sackP = clamp(P.sack, .01, .30), intP = clamp(P.int, .005, .18), compP = clamp(P.comp, .12, .92);
     res.air = irnd(P.air[0], P.air[1]);
     if (r < sackP) { res.kind = 'sack'; res.yds = -irnd(4, 8); }
     else if (r < sackP + intP) { res.kind = 'int'; res.ret = irnd(0, 18) + (Math.random() < 0.08 ? irnd(20, 60) : 0); }
     else if (r < sackP + intP + (1 - sackP - intP) * compP) {
-      res.kind = 'complete'; res.yds = res.air + (call === 'Deep Pass' ? Math.max(0, Math.round(T * 3 + gauss() * 3)) + (Math.random() < big + 0.1 * Math.max(T, 0) ? irnd(5, 25) : 0) : yac());
+      res.kind = 'complete'; res.yds = res.air + (call === 'Deep Pass' ? Math.max(0, Math.round(T * 3 + k * 1.2 * X.hands + gauss() * 3)) + (Math.random() < big + 0.1 * Math.max(T, 0) + k * 0.03 * X.hands ? irnd(5, 25) : 0) : yac());
       if (Math.random() < 0.01) res.fumble = true;
     }
     else res.kind = 'incomplete';
@@ -182,7 +190,7 @@ function planPlay(res) {
     }
     const tThrow = SNAP + dropT + holdT;
     ballSeg({ t0: SNAP + .15, t1: tThrow, type: 'hold', a: qb });
-    passRush(qb, depth, tThrow, res.kind === 'incomplete');
+    passRush(qb, depth, tThrow, res.kind === 'incomplete', res);
     // target receiver and catch point
     const target = call === 'Short Pass' ? pick([wrs[2], wrs[0], wrs[1]]) : pick([wrs[0], wrs[1]]);
     const air = res.air;
@@ -244,12 +252,9 @@ function planPlay(res) {
 }
 // Pass rush on passes that are not sacks: the D-Line gets into the pocket and chases the QB.
 // How close they get depends on D-Line vs O-Line ratings (a 100 D-Line is right on him as he throws).
-function passPressure() {
-  const O = G.poss, D = other(O);
-  return clamp(0.35 + (effRating(D, 'D-Line') - effRating(O, 'O-Line')) / 30, 0.1, 0.95);
-}
-function passRush(qb, depth, tThrow, incomplete) {
-  const p = passPressure();
+function passPressure(res) { return clamp(0.4 - 0.55 * (res.duels ? res.duels.line : 0), 0.1, 0.95); }
+function passRush(qb, depth, tThrow, incomplete, res) {
+  const p = passPressure(res);
   const dl = role('DL').slice().sort((a, b) => Math.abs(a.d0 - .5) - Math.abs(b.d0 - .5));
   dl.forEach((a, i) => {
     cutAt(a, SNAP + .5);

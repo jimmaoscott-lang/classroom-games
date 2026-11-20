@@ -17,6 +17,8 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
 
 ## Ratings
 - 8 players per team (QB, RB, WR, O-Line, D-Line, LB, Secondary, Kicker), start 60-70.
+- Position duels (changed 11/20, build 0.5.2): every position matters on the plays it is part of. O-Line vs D-Line (D-Line + LB on a Blitz) = run push and sacks on all passes. RB vs LB = breaking tackles, big runs, fumbles. QB vs Secondary = completions and interceptions. WR vs Secondary = completions and yards after catch. RB vs LB on Play Action = selling the fake. Their average is the ratings part of the result. Strength tuned so right answers still beat an 80-rated team that misses; a full roster of 100s that misses plays about even with a 60s team that answers. Examples at even 65s: D-Line 100 sacks 3.5% -> 6%, RB 100 runs outside 3.4 -> 4.8 yards, Secondary 100 incompletions 31% -> 38%.
+- Pass rush animation: D-Line pushes into the pocket and chases the QB; how close depends on the O-Line vs D-Line duel.
 - Each +1 tap = +2 rating (teacher can set 1-3). Cap 100. Never below starting rating. Spend during breaks.
 
 ## Accommodations
