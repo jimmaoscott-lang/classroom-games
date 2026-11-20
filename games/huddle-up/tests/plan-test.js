@@ -7,7 +7,7 @@ const out = process.argv[2] || '/tmp';
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('file://' + path.resolve('game/index.html'));
+  await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
   await page.click('#kick');
   const bad = await page.evaluate(() => {
     const probs = []; let n = 0;

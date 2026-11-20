@@ -117,6 +117,7 @@ button{font-family:inherit;cursor:pointer}
 .matchup{display:flex;gap:16px;align-items:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px}
 .opts{display:flex;gap:22px;font-size:14px;color:#A9B6CA;border:1px dashed #4A5D7C;border-radius:8px;padding:10px 16px}
 .opts label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.opts select{font:inherit;font-size:14px;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:4px;padding:3px 6px}
 .bigbtn{width:320px;flex:none}
 .stats{font-size:20px;color:#E6ECF5;line-height:1.6}
 .ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#4A5D7C}
@@ -152,11 +153,12 @@ button{font-family:inherit;cursor:pointer}
  </div></div>
  <div id="lock"><div class="proto">Ref review</div><div id="lockMsg"></div><div id="lockSecs"></div></div>
  <div class="screen show" id="title">
-  <div class="proto">Test build · Step 4</div>
+  <div class="proto">Test build · Step 5</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
-  <div class="blurb">Quick game: 4 quarters, 6 plays each. Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
+  <div class="blurb"><span id="lenTxt"></span> Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
   <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
+  <div class="opts"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
   <button class="go bigbtn" id="kick">Kick Off</button>
   <div class="ver" id="ver"></div>
  </div>
@@ -186,7 +188,7 @@ var SAMPLE_QUESTIONS = [
   ['Who were the "Okies"?', 'Farm families who moved west to escape the Dust Bowl', 'New York bankers who lost everything', 'World War I veterans', 'Union leaders in Detroit', '', 'Prototype test', ''],
 ];
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.4.0 skill points';
+var INDEX_VERSION = '0.5.0 computer coach';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -199,13 +201,22 @@ const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.75
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function wpick(pairs) { let n = pairs.reduce((s, p) => s + p[1], 0) * Math.random(); for (const p of pairs) { if ((n -= p[1]) <= 0) return p[0]; } return pairs[0][0]; }
 
-const QUARTERS = 4, PLAYS_PER_QUARTER = 6; // Quick game for testing (teacher setting comes later)
-const PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+// Game length (teacher setting). Quick ~15 min, Standard ~30 min, Full Period ~45 min.
+const LENGTHS = { Quick: 6, Standard: 12, 'Full Period': 18 };
+const QUARTERS = 4;
+let LENGTH = 'Standard', PLAYS_PER_QUARTER = 12, PLAYS_PER_GAME = 48;
 // Teacher settings (the gear menu comes later). Test overrides: ?diff=Easy|Normal|Hard|Expert, ?rpp=1|2|3
 const DIFFS = { Easy: { miss: 0.40, brk: 2 }, Normal: { miss: 0.25, brk: 4 }, Hard: { miss: 0.10, brk: 5 }, Expert: { miss: 0, brk: 6 } };
-const DIFF = DIFFS[QS.get('diff')] ? QS.get('diff') : 'Normal';
-const CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses its huddle
-const CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
+let DIFF = 'Normal', CPU_MISS = 0.25, CPU_BREAK_POINTS = 4; // set by applySettings()
+// Teacher settings for this game. The gear menu (with the PIN from the Settings tab) comes with the Sheet in step 9.
+function applySettings(length, diff) {
+  LENGTH = LENGTHS[length] ? length : 'Standard';
+  PLAYS_PER_QUARTER = LENGTHS[LENGTH]; PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+  DIFF = DIFFS[diff] ? diff : 'Normal';
+  CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses each huddle question
+  CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
+}
+applySettings(QS.get('len'), QS.get('diff'));
 const RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
 const RATING_CAP = 100;
 const INJURY_STREAK = 3, INJURY_PLAYS = 3; // 3 wrong in a row = a player is shaken up for 3 plays
@@ -353,12 +364,12 @@ function drawBallShape(x, y, s) {
   ctx.beginPath(); ctx.ellipse(0, 0, 9, 5.5, 0, 0, 7); ctx.fillStyle = '#8B4A1C'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#3A1D0A'; ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.fillRect(-4, -1, 8, 2); ctx.restore();
 }
-// Red-cross trainer icon over a Pelicans player who is shaken up.
+// Red-cross trainer icon over any player who is shaken up (either team, when he is on the field).
 function drawTrainerIcons() {
-  for (const p of POS) {
-    const r = G.ratings.home[p]; if (!r.hurt || !POS_ROLE[p]) continue;
+  for (const t of ['home', 'away']) for (const p of POS) {
+    const r = G.ratings[t][p]; if (!r.hurt || !POS_ROLE[p]) continue;
     const [rl, i] = POS_ROLE[p];
-    const a = G.actors.filter(x => x.team === 'home' && x.role === rl)[i]; if (!a) continue;
+    const a = G.actors.filter(x => x.team === t && x.role === rl)[i]; if (!a) continue;
     const [sx, sy] = proj(a.x, a.d), sc = 0.7 + 0.5 * a.d, y = sy - 82 * sc;
     if (sx < -30 || sx > 1310) continue;
     ctx.beginPath(); ctx.arc(sx, y, 11, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#B91C1C'; ctx.stroke();
@@ -656,7 +667,7 @@ function pose(P, t) {
     else { b.x = L + s * seg.u; b.d = seg.d; b.h = seg.h; }
   }
 }
-// Huddle Up: game flow (build step 4). Pelicans = the student coach; Comets = computer coach.
+// Huddle Up: game flow (build step 5). Pelicans = the student coach; Comets = computer coach.
 
 function newGame() {
   const ratings = {};
@@ -669,7 +680,7 @@ function newGame() {
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
     accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
     streak: 0, wrongRun: [], flags: 0, lockUntil: 0, log: [], cpuPoints: 0, injuries: 0, spent: 0,
-    brk: { poss: 'home', score: 0 },
+    brk: { poss: 'home', score: 0 }, hist: { off: [], def: [] }, cpuStreak: 0, cpuInjuries: 0,
   };
   G.defCall = null; setFormation();
   G.camX = camTarget(G.ballX, dir());
@@ -679,15 +690,76 @@ const userOnOffense = () => G.poss === 'home';
 function changePoss(team, x) { G.poss = team; G.ballX = clamp(x, 1, 99); G.down = 1; G.toGo = Math.min(10, ytg()); }
 
 // ---------- computer coach ----------
+// The computer coach calls plays from the game situation, then leans toward calls that beat what the
+// student has been calling lately. Difficulty only changes how often it misses its huddle questions.
+const playsLeft = () => PLAYS_PER_GAME - G.play;
+const lateGame = () => playsLeft() <= Math.max(4, PLAYS_PER_QUARTER / 2);
+const cpuLead = () => G.score.away - G.score.home;
+const VAL_D = { B: 1, E: 0, G: -1, R: 0.2 };  // how much a defense likes a matchup
+const VAL_O = { G: 1, E: 0, B: -1, R: 0.3 };  // how much an offense likes a matchup
+// Share of each call in the student's last 6 calls on that side (empty = no read yet).
+function tendency(list) { const last = list.slice(-6), f = {}; last.forEach(c => f[c] = (f[c] || 0) + 1 / last.length); return f; }
 function cpuOffense() {
-  const long = G.down >= 2 && G.toGo >= 8, short = G.toGo <= 2;
-  return wpick(OFF_CALLS.map(c => [c, long ? (c.startsWith('Run') ? 1 : 3) : short ? (c.startsWith('Run') ? 4 : c === 'Play Action' ? 2 : 1) : 2]));
+  const long = G.down >= 2 && G.toGo >= 8, short = G.toGo <= 2, goal = ytg() <= 10, lead = cpuLead();
+  const f = tendency(G.hist.def);
+  return wpick(OFF_CALLS.map(c => {
+    const run = c.startsWith('Run');
+    let w = long ? (run ? 1 : 3) : short ? (run ? 4 : c === 'Play Action' ? 2 : 1) : 2;
+    if (goal) w *= c === 'Deep Pass' ? 0.3 : run || c === 'Short Pass' ? 1.5 : 1;   // short field: no room to throw deep
+    if (lateGame() && lead < 0) w *= run ? 0.5 : c === 'Deep Pass' ? 2 : 1.3;       // behind late: throw it
+    if (lateGame() && lead > 0) w *= run ? 1.8 : c === 'Deep Pass' ? 0.4 : 0.8;     // ahead late: run it
+    const read = Object.keys(f).reduce((n, d) => n + f[d] * VAL_O[MATCHUP[c][d]], 0);
+    return [c, w * Math.exp(1.3 * read)];
+  }));
 }
 function cpuDefense() {
-  const long = G.down >= 2 && G.toGo >= 8, short = G.toGo <= 2;
-  return wpick(DEF_CALLS.map(c => [c, long ? ({ 'Zone': 3, 'Man Coverage': 3, 'Blitz': 2, 'Stack the Box': 1 }[c]) : short ? ({ 'Stack the Box': 3, 'Blitz': 2, 'Zone': 1, 'Man Coverage': 1 }[c]) : 2]));
+  const long = G.down >= 2 && G.toGo >= 8, short = G.toGo <= 2, lead = cpuLead();
+  const f = tendency(G.hist.off);
+  return wpick(DEF_CALLS.map(d => {
+    let w = long ? ({ 'Zone': 3, 'Man Coverage': 3, 'Blitz': 2, 'Stack the Box': 1 }[d]) : short ? ({ 'Stack the Box': 3, 'Blitz': 2, 'Zone': 1, 'Man Coverage': 1 }[d]) : 2;
+    if (lateGame() && lead > 0) w *= d === 'Zone' ? 1.6 : d === 'Blitz' ? 0.6 : 1;      // ahead late: keep everything in front
+    if (lateGame() && lead < 0) w *= d === 'Blitz' ? 1.6 : 1;                          // behind late: force a mistake
+    const read = Object.keys(f).reduce((n, c) => n + f[c] * VAL_D[MATCHUP[c][d]], 0);
+    return [d, w * Math.exp(1.3 * read)];
+  }));
 }
-const cpuGoesForIt = () => G.toGo <= 1 || (G.toGo <= 3 && ytg() <= 40);
+// 4th down: go for it on short yardage, deep in Pelicans territory, when behind late, or on the last play.
+function cpuGoesForIt() {
+  const lead = cpuLead();
+  if (playsLeft() <= 1) return lead <= 0;
+  if (lateGame() && lead < 0) return G.toGo <= 10 || playsLeft() <= 3;
+  if (lateGame() && lead > 0) return G.toGo <= 1 && ytg() <= 40;
+  return G.toGo <= 1 && ytg() <= 70 || (G.toGo <= 3 && ytg() <= 40);
+}
+// The computer team's huddle: same rules as the student. One question, a second chance after a miss.
+// Returns 'clean', 'shaky' (missed once), 'delay' (offense missed twice) or 'blown' (defense missed twice).
+function cpuHuddle(side) {
+  const notes = [];
+  const miss = () => Math.random() < CPU_MISS;
+  G.cpuMisses = G.cpuMisses || 0;
+  if (!miss()) { G.cpuStreak = 0; return { q: 'clean', notes }; }
+  G.cpuStreak++; G.cpuMisses++;
+  // first miss: one random penalty (on-field effect or a rating loss for a player in the play)
+  const players = side === 'offense' ? RATINGS_USED[G.offCall][0] : DEF_PLAYERS[G.defCall];
+  const canDrop = players.filter(p => G.ratings.away[p].now > G.ratings.away[p].start);
+  if (canDrop.length && Math.random() < 0.5) {
+    const p = pick(canDrop), r = G.ratings.away[p]; r.now = Math.max(r.start, r.now - 2); notes.push(`Comets ${p} lost 2 rating`);
+  } else if (side === 'offense') G.mods.slowSnap = true; else G.mods.slowRead = true;
+  let q = 'shaky';
+  if (miss()) { G.cpuStreak++; G.cpuMisses++; q = side === 'offense' ? 'delay' : 'blown'; }
+  if (G.cpuStreak >= INJURY_STREAK) { G.cpuStreak = 0; notes.push(injurePlayer('away')); }
+  return { q, notes };
+}
+
+// Tell the student when the computer read a tendency ("keying on your Run Inside").
+function keyingOn() {
+  const userOff = userOnOffense(), list = userOff ? G.hist.off : G.hist.def, last = list.slice(-5);
+  if (last.length < 4) return '';
+  const top = Object.entries(tendency(last)).sort((a, b) => b[1] - a[1])[0];
+  if (!top || top[1] < 0.6) return '';
+  const beat = userOff ? MATCHUP[top[0]][G.defCall] === 'B' : MATCHUP[G.offCall][top[0]] === 'G';
+  return beat ? `Comets coach is keying on your ${top[0]}. Mix it up!` : '';
+}
 
 // ---------- panel ----------
 function showCalls() {
@@ -725,11 +797,13 @@ function showNext(text, fn) {
   $('#nextBtn').onclick = fn;
 }
 function callOffense(call) {
-  G.offCall = call; G.defCall = cpuDefense(); G.cpuQ = Math.random() < CPU_MISS ? 'shaky' : 'clean'; G.mods = {}; G.userQ = null;
+  G.offCall = call; G.defCall = cpuDefense(); G.hist.off.push(call); G.mods = {}; G.userQ = null;
+  const h = cpuHuddle('defense'); G.cpuQ = h.q; G.cpuNotes = h.notes;
   openHuddle(1, 'offense');
 }
 function callDefense(call) {
-  G.defCall = call; G.offCall = cpuOffense(); G.cpuQ = Math.random() < CPU_MISS ? 'shaky' : 'clean'; G.mods = {}; G.userQ = null;
+  G.defCall = call; G.offCall = cpuOffense(); G.hist.def.push(call); G.mods = {}; G.userQ = null;
+  const h = cpuHuddle('offense'); G.cpuQ = h.q; G.cpuNotes = h.notes;
   setFormation(); // show the defense lining up in its call
   openHuddle(1, 'defense');
 }
@@ -799,18 +873,21 @@ function answer(i) {
   updateHud();
   next.style.display = 'block';
 }
-// 3 wrong answers in a row: a random Pelicans player is shaken up and plays at his starting rating for 3 plays.
-function injurePlayer() {
-  const healthy = POS.filter(p => !G.ratings.home[p].hurt);
-  const pool = healthy.filter(p => G.ratings.home[p].now > G.ratings.home[p].start);
-  const p = pick(pool.length ? pool : healthy.length ? healthy : POS), r = G.ratings.home[p];
-  r.hurt = INJURY_PLAYS; G.injuries++;
+// 3 wrong answers in a row: a random player is shaken up and plays at his starting rating for 3 plays.
+function injurePlayer(team) {
+  team = team || 'home';
+  const R = G.ratings[team], healthy = POS.filter(p => !R[p].hurt);
+  const pool = healthy.filter(p => R[p].now > R[p].start);
+  const p = pick(pool.length ? pool : healthy.length ? healthy : POS), r = R[p];
+  r.hurt = INJURY_PLAYS;
+  if (team === 'away') { G.cpuInjuries++; return `Comets ${p} shaken up`; }
+  G.injuries++;
   return `Three misses in a row: your ${p} is shaken up and plays at his starting rating (${r.start}) for the next ${INJURY_PLAYS} plays.`;
 }
-// Called once per play (snap, flag, or punt): count down shaken-up players.
+// Called once per play (snap, flag, or punt): count down shaken-up players on both teams.
 function tickInjuries() {
   const back = [];
-  for (const p of POS) { const r = G.ratings.home[p]; if (r.hurt > 0 && --r.hurt === 0) back.push(p); }
+  for (const t of ['home', 'away']) for (const p of POS) { const r = G.ratings[t][p]; if (r.hurt > 0 && --r.hurt === 0) back.push((t === 'away' ? 'Comets ' : '') + p); }
   return back.length ? ` · ${back.join(' and ')} back to full strength` : '';
 }
 // Guess flag: 3 wrong in a row that were each too fast to read, or 3 wrong in a row in the same position.
@@ -856,18 +933,21 @@ function closeHuddle() { $('#huddle').classList.remove('show'); stopSpeech(); }
 const ownYards = () => 100 - ytg();
 function delayOfGame() {
   closeHuddle();
+  const who = userOnOffense() ? '' : 'Comets ';
+  const notes = G.cpuNotes && !userOnOffense() ? G.cpuNotes.map(n => ' · ' + n).join('') : '';
   const back = Math.min(5, Math.floor(ownYards()) / 2);
   const s = dir();
   G.ballX -= s * back; G.toGo += back; G.play++;
   const healed = tickInjuries();
   G.flag = { x: G.ballX + s * (back - 1), d: .45 };
   G.defCall = null; setFormation();
-  banner('Flag · Delay of game', `5-yard penalty · Replay ${ord(G.down)} down` + healed + quarterNote(), 'flag');
+  banner(`Flag · ${who}Delay of game`, `${userOnOffense() ? '' : 'Comets missed their huddle twice · '}5-yard penalty · Replay ${ord(G.down)} down` + notes + healed + quarterNote(), userOnOffense() ? 'flag' : 'td');
   G.mode = 'result'; updateHud(); $('#label').textContent = 'Result';
   showNext(nextLabel(), afterResult);
 }
 function snap() {
   closeHuddle();
+  if (!userOnOffense() && G.cpuQ === 'delay') return delayOfGame();
   const oq = userOnOffense() ? G.userQ : G.cpuQ, dq = userOnOffense() ? G.cpuQ : G.userQ;
   const res = resolvePlay(G.offCall, G.defCall, oq, dq, G.mods);
   setFormation();
@@ -926,6 +1006,9 @@ function finishPlay() {
   }
   small.push(userOff ? `Comets called ${r.defCall}` : `Comets ran ${r.call}`);
   if (G.cpuQ === 'shaky') small.push('Comets missed their huddle');
+  if (G.cpuQ === 'blown') small.push('Comets missed their huddle twice · Missed assignment');
+  (G.cpuNotes || []).forEach(n => small.push(n));
+  const key = keyingOn(); if (key) small.push(key);
   if (G.userQ === 'shaky') small.push('Your second-chance huddle slowed you down');
   if (G.userQ === 'blown') small.push('Missed assignment on your defense');
   banner(big, small.join(' · ') + healed + quarterNote(), cls);
@@ -1015,7 +1098,7 @@ function closeBreak() {
   $('#break').classList.remove('show'); stopSpeech();
   const f = G.breakResume; G.breakResume = null; f();
 }
-function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b2').textContent = b2 || ''; $('#b2').style.display = b2 ? '' : 'none'; const b = $('#banner'); b.className = ''; void b.offsetWidth; b.className = 'show ' + (cls || ''); }
+function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b1').style.fontSize = b1.length > 24 ? '42px' : ''; $('#b2').textContent = b2 || ''; $('#b2').style.display = b2 ? '' : 'none'; const b = $('#banner'); b.className = ''; void b.offsetWidth; b.className = 'show ' + (cls || ''); }
 function hideBanner() { $('#banner').className = ''; }
 function showFinal() {
   G.mode = 'final';
@@ -1025,6 +1108,7 @@ function showFinal() {
   const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length, flagged = G.log.length - scored.length;
   $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
     (flagged ? `<br>Guess-flagged answers (left out of % correct): <b>${flagged}</b>` : '') +
+    `<br>Computer: <b>${DIFF}</b> · missed ${G.cpuMisses || 0} huddle question${G.cpuMisses === 1 ? '' : 's'}` +
     `<br>Skill points spent: <b>${G.spent}</b> · unspent: <b>${G.points}</b>${G.injuries ? ` · players shaken up: <b>${G.injuries}</b>` : ''}`;
   $('#final').classList.add('show');
 }
@@ -1039,9 +1123,10 @@ function updateHud() {
   const p = Math.min(G.play, PLAYS_PER_GAME - 1);
   $('#sub').textContent = `${TEAMS[G.poss].short} ball · Quarter ${Math.floor(p / PLAYS_PER_QUARTER) + 1} · Play ${p % PLAYS_PER_QUARTER + 1} of ${PLAYS_PER_QUARTER}`;
   $('#chip').textContent = `Skill points: ${G.points}`;
-  const hurt = POS.filter(p => G.ratings.home[p].hurt > 0);
+  const hurt = [];
+  for (const t of ['home', 'away']) POS.forEach(p => { const h = G.ratings[t][p].hurt; if (h > 0) hurt.push(`${t === 'away' ? 'Comets ' : ''}${p} shaken up · ${h} play${h > 1 ? 's' : ''}`); });
   $('#trainer').classList.toggle('show', hurt.length > 0);
-  $('#trainerTxt').textContent = hurt.map(p => `${p} shaken up · ${G.ratings.home[p].hurt} play${G.ratings.home[p].hurt > 1 ? 's' : ''}`).join(' · ');
+  $('#trainerTxt').textContent = hurt.join(' · ');
 }
 
 // ---------- main loop ----------
@@ -1066,7 +1151,12 @@ function frame(now) {
 function fit() { const s = Math.min(innerWidth / 1280, innerHeight / 720); $('#stage').style.transform = `scale(${s})`; }
 addEventListener('resize', fit); fit();
 $('#optRA').checked = QS.get('ra') === '1'; $('#optRC').checked = QS.get('rc') === '1'; $('#optET').checked = QS.get('et') === '1';
-$('#ver').textContent = 'Build ' + INDEX_VERSION + ' · Computer: ' + DIFF + ' · +1 = ' + RATING_PER_POINT + ' rating';
+$('#ver').textContent = 'Build ' + INDEX_VERSION + ' · +1 = ' + RATING_PER_POINT + ' rating';
+// Test pickers for the teacher settings (students will not see these once the gear menu exists).
+$('#optLen').value = LENGTH; $('#optDiff').value = DIFF;
+const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTH} game: 4 quarters, ${PLAYS_PER_QUARTER} plays each.`; };
+$('#optLen').onchange = $('#optDiff').onchange = () => { applySettings($('#optLen').value, $('#optDiff').value); titleBlurb(); updateHud(); };
+titleBlurb();
 $('#kick').onclick = () => { $('#title').classList.remove('show'); newGame(); };
 $('#again').onclick = () => { $('#final').classList.remove('show'); newGame(); };
 $$('[data-exit]').forEach(b => b.onclick = () => { stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });

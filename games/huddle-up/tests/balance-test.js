@@ -4,7 +4,7 @@ const path = require('path');
 (async () => {
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
   const page = await browser.newPage();
-  await page.goto('file://' + path.resolve('game/index.html'));
+  await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
   const out = await page.evaluate(() => {
     const N = 4000, rows = [];
     const setR = (team, v) => POS.forEach(p => { G.ratings[team][p].now = v; G.ratings[team][p].start = v; });

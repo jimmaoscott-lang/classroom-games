@@ -49,3 +49,11 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
   - Every answer is logged in the page (time, question, TEKS, Right/Wrong, accommodations, guess flag, event tag) for the Results tab in step 9.
   - Test option added: Extended time (`?et=1`).
   - Tests: tests/step4-test.js checks injuries, countdown, trainer chip, guess lock, break spending, cap, computer points, rating floor, halftime.
+- Step 5 (solo computer coach): built 11/20/2026. Build 0.5.0.
+  - Computer play calls: down and distance first, then game situation (short field: fewer deep passes; behind late: throw more and blitz more; ahead late: run more and play zone). Then it reads the student's last 6 calls on that side and leans toward the call that beats the habit. When the read works, the result banner says "Comets coach is keying on your Run Inside. Mix it up!"
+  - Play calling is the same at every difficulty. Difficulty still only sets how often the computer misses each huddle question (Easy 40%, Normal 25%, Hard 10%, Expert 0%) and its break points (2/4/5/6).
+  - The computer goes through the same huddle as the student: a first miss gives a random penalty (on-field effect or a player in the play loses 2 rating), a second miss gives the full consequence (Comets delay of game on offense, missed assignment on defense), and 3 misses in a row shake up a Comets player (trainer icon on their side too).
+  - 4th down: goes for it on 4th & 1 past its own 30, 4th & 3 or less inside the Pelicans 40, behind late on 4th & 10 or less, and on the last play unless ahead. Ahead late it only goes on 4th & 1 inside the 40. Field goals join in step 8.
+  - Game length is now a setting: Quick (6 plays a quarter), Standard (12, the default), Full Period (18). Title screen has test pickers for game length and computer difficulty (`?len=Quick`, `?diff=Hard` also work). The teacher gear menu with the PIN comes with the Sheet in step 9.
+  - Open question for later: play clock (Off/15/20/30) is in the design but what happens when it runs out is not decided yet.
+  - Tests: tests/step5-test.js checks tendency reads, late-game calls, 4th down choices, miss rates for each difficulty, Comets delay of game, Comets injuries. Tests run Quick games.

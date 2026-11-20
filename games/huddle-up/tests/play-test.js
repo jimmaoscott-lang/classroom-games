@@ -12,7 +12,7 @@ const shots = {}; let breaks = 0;
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_|Failed to load/.test(m.text())) errors.push(m.text()); });
-  await page.goto('file://' + path.resolve('game/index.html'));
+  await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
   await page.waitForTimeout(400);
   await page.screenshot({ path: out + '/1-title.png' });
   const seenAnim = new Set(), seenKind = new Set();
@@ -68,7 +68,7 @@ const shots = {}; let breaks = 0;
   }
   console.log('breaks shown:', breaks);
   console.log('animated:', [...seenAnim].join(', '));
-  await page.goto('file://' + path.resolve('game/index.html') + '?rc=1');
+  await page.goto('file://' + path.resolve('game/index.html') + '?rc=1&len=Quick');
   await page.click('#kick'); await page.click('[data-call="Run Inside"]');
   console.log('choices with reduced:', await page.$$eval('.choice', b => b.length));
   console.log('errors:', errors.length ? errors : 'none');

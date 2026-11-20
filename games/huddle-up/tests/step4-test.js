@@ -8,9 +8,10 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('file://' + path.resolve('game/index.html'));
+  await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
   await page.click('#kick');
-  const wrong = () => page.evaluate(() => G.q.choices.findIndex(c => !c.right));
+  let lastW = -1; // vary the position so slow misses never trip the same-position guess rule
+  const wrong = async () => { lastW = await page.evaluate(l => { const w = G.q.choices.map((c, i) => c.right ? -1 : i).filter(i => i >= 0 && i !== l); return w[0]; }, lastW); return lastW; };
   const right = () => page.evaluate(() => G.q.choices.findIndex(c => c.right));
   // 1) injury after 3 wrong in a row (slow answers so no guess flag)
   await page.evaluate(() => { G.points = 0; POS.forEach(p => { G.ratings.home[p].now = G.ratings.home[p].start + 6; }); });

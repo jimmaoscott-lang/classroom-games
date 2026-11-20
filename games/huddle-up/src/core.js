@@ -1,5 +1,5 @@
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.4.0 skill points';
+var INDEX_VERSION = '0.5.0 computer coach';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -12,13 +12,22 @@ const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.75
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function wpick(pairs) { let n = pairs.reduce((s, p) => s + p[1], 0) * Math.random(); for (const p of pairs) { if ((n -= p[1]) <= 0) return p[0]; } return pairs[0][0]; }
 
-const QUARTERS = 4, PLAYS_PER_QUARTER = 6; // Quick game for testing (teacher setting comes later)
-const PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+// Game length (teacher setting). Quick ~15 min, Standard ~30 min, Full Period ~45 min.
+const LENGTHS = { Quick: 6, Standard: 12, 'Full Period': 18 };
+const QUARTERS = 4;
+let LENGTH = 'Standard', PLAYS_PER_QUARTER = 12, PLAYS_PER_GAME = 48;
 // Teacher settings (the gear menu comes later). Test overrides: ?diff=Easy|Normal|Hard|Expert, ?rpp=1|2|3
 const DIFFS = { Easy: { miss: 0.40, brk: 2 }, Normal: { miss: 0.25, brk: 4 }, Hard: { miss: 0.10, brk: 5 }, Expert: { miss: 0, brk: 6 } };
-const DIFF = DIFFS[QS.get('diff')] ? QS.get('diff') : 'Normal';
-const CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses its huddle
-const CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
+let DIFF = 'Normal', CPU_MISS = 0.25, CPU_BREAK_POINTS = 4; // set by applySettings()
+// Teacher settings for this game. The gear menu (with the PIN from the Settings tab) comes with the Sheet in step 9.
+function applySettings(length, diff) {
+  LENGTH = LENGTHS[length] ? length : 'Standard';
+  PLAYS_PER_QUARTER = LENGTHS[LENGTH]; PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+  DIFF = DIFFS[diff] ? diff : 'Normal';
+  CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses each huddle question
+  CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
+}
+applySettings(QS.get('len'), QS.get('diff'));
 const RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
 const RATING_CAP = 100;
 const INJURY_STREAK = 3, INJURY_PLAYS = 3; // 3 wrong in a row = a player is shaken up for 3 plays

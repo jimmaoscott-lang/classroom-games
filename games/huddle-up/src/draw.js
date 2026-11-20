@@ -95,12 +95,12 @@ function drawBallShape(x, y, s) {
   ctx.beginPath(); ctx.ellipse(0, 0, 9, 5.5, 0, 0, 7); ctx.fillStyle = '#8B4A1C'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#3A1D0A'; ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.fillRect(-4, -1, 8, 2); ctx.restore();
 }
-// Red-cross trainer icon over a Pelicans player who is shaken up.
+// Red-cross trainer icon over any player who is shaken up (either team, when he is on the field).
 function drawTrainerIcons() {
-  for (const p of POS) {
-    const r = G.ratings.home[p]; if (!r.hurt || !POS_ROLE[p]) continue;
+  for (const t of ['home', 'away']) for (const p of POS) {
+    const r = G.ratings[t][p]; if (!r.hurt || !POS_ROLE[p]) continue;
     const [rl, i] = POS_ROLE[p];
-    const a = G.actors.filter(x => x.team === 'home' && x.role === rl)[i]; if (!a) continue;
+    const a = G.actors.filter(x => x.team === t && x.role === rl)[i]; if (!a) continue;
     const [sx, sy] = proj(a.x, a.d), sc = 0.7 + 0.5 * a.d, y = sy - 82 * sc;
     if (sx < -30 || sx > 1310) continue;
     ctx.beginPath(); ctx.arc(sx, y, 11, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#B91C1C'; ctx.stroke();
