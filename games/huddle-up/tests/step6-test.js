@@ -13,7 +13,8 @@ const BOT = () => {
     if (!G || G.mode === 'final' || G.mode === 'left') return;
     if (document.querySelector('#lock.on')) return;
     if (G.mode === 'call') {
-      if (vis('#goFor')) return (Math.random() < 0.5 ? $('#goFor') : $('#puntBtn')).click();
+      if (vis('[data-kick]')) return $('[data-kick]').click();
+      if (vis('#goFor')) { const r = Math.random(); return (!$('#fgBtn').disabled && r < .4 ? $('#fgBtn') : r < .7 ? $('#goFor') : $('#puntBtn')).click(); }
       const b = $$('[data-call]'); if (b.length) pick(b).click(); return;
     }
     if (G.mode === 'huddle') {
@@ -54,6 +55,16 @@ const BOT = () => {
       const C = await ctx.newPage(); await C.goto(url); await C.click('#joinOpen'); await C.fill('#joinCode', code); await C.click('#joinBtn'); await C.waitForTimeout(400);
       ok(/two coaches/.test(await C.textContent('#netErr')), 'third coach is refused'); await C.close();
       ok(await A.evaluate(() => JSON.stringify(G.ratings)) === await B.evaluate(() => JSON.stringify(G.ratings)), 'both computers start with the same ratings');
+      // opening kickoff: guest (Comets) kicks, host (Pelicans) returns; both answer, both see the same kick
+      ok(await A.isVisible('[data-kick="return"]') && await B.isVisible('[data-kick="kickoff"]'), 'opening kickoff: Comets coach kicks, Pelicans coach returns');
+      for (const p of [A, B]) { await p.click('[data-kick]'); const i = await p.evaluate(() => G.q.choices.findIndex(c => c.right)); await p.evaluate(() => G.clockStart = -1e9); await p.click(`.choice[data-i="${i}"]`); await p.click('#hNext'); }
+      await Promise.all([A, B].map(p => p.waitForFunction(() => G.mode === 'result', null, { timeout: 15000 })));
+      const ko = await Promise.all([A, B].map(p => p.evaluate(() => JSON.stringify([G.res, G.poss, G.ballX]))));
+      ok(ko[0] === ko[1], 'same kickoff result on both screens: ' + await A.textContent('#b1'));
+      await A.screenshot({ path: out + '/s6-kickoff-result.png' });
+      for (const p of [A, B]) { await p.click('#nextBtn'); if (await p.isVisible('#break.show')) await p.click('#bkDone'); }
+      // put the Pelicans on offense for the secret-call checks (same change on both computers)
+      for (const p of [A, B]) await p.evaluate(() => { changePoss('home', 25); setFormation(); showCalls(); });
       ok(/Coach Pelicans · Offense/.test(await A.textContent('#label')) && /Coach Comets · Defense/.test(await B.textContent('#label')), 'host coaches Pelicans offense, guest coaches Comets defense');
       // secret calls: host calls and waits; guest has not been told the call
       await A.click('[data-call="Short Pass"]');

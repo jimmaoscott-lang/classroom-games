@@ -9,7 +9,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
-  await page.click('#kick');
+  await page.click('#kick'); await page.evaluate(() => { G.pending = null; changePoss('home', 25); setFormation(); showCalls(); }); /* skip the opening kickoff */
   let lastW = -1; // vary the position so slow misses never trip the same-position guess rule
   const wrong = async () => { lastW = await page.evaluate(l => { const w = G.q.choices.map((c, i) => c.right ? -1 : i).filter(i => i >= 0 && i !== l); return w[0]; }, lastW); return lastW; };
   const right = () => page.evaluate(() => G.q.choices.findIndex(c => c.right));
@@ -66,11 +66,11 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await page.click('#bkDone');
   ok(await page.evaluate(() => G.mode === 'call' || G.mode === 'cpuPunt'), 'back to the game');
   // 4) first-miss rating penalty never drops below the start
-  const floor = await page.evaluate(() => { let okk = true; for (let k = 0; k < 200; k++) { G.offCall = 'Run Inside'; G.mods = {}; G.points = 0; firstMissPenalty(true); POS.forEach(p => { if (G.ratings.home[p].now < G.ratings.home[p].start) okk = false; }); } return okk; });
+  const floor = await page.evaluate(() => { let okk = true; for (let k = 0; k < 200; k++) { G.offCall = 'Run Inside'; G.mods = {}; G.points = 0; firstMissPenalty('offense'); POS.forEach(p => { if (G.ratings.home[p].now < G.ratings.home[p].start) okk = false; }); } return okk; });
   ok(floor, 'ratings never drop below their starting value');
   // 5) halftime break title
   await page.evaluate(() => { G.play = PLAYS_PER_GAME / 2; G.halftimeDone = false; G.mode = 'result'; afterResult(); });
-  ok(await page.textContent('#bkTitle') === 'Halftime' && await page.evaluate(() => G.poss === 'away'), 'halftime break, Comets get the ball');
+  ok(await page.textContent('#bkTitle') === 'Halftime' && await page.evaluate(() => G.pending && G.pending.kind === 'kickoff' && G.pending.kicker === 'home'), 'halftime break, Pelicans kick off to the Comets');
   await page.click('#bkDone');
   ok(errors.length === 0, 'no page errors ' + errors.join(' | '));
   await browser.close(); process.exit(fails ? 1 : 0);

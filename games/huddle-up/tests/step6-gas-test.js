@@ -28,10 +28,10 @@ const FAKE_GAS = () => {
   await A.click('#h2hBtn'); await A.waitForFunction(() => /^[A-Z]{4}$/.test(document.querySelector('#netBig').textContent));
   const code = await A.textContent('#netBig');
   await B.click('#joinOpen'); await B.fill('#joinCode', code); await B.click('#joinBtn');
-  await A.waitForFunction(() => G.net && G.mode === 'call', null, { timeout: 8000 });
+  await A.waitForFunction(() => G.net && G.mode === 'call' && G.me === 'home', null, { timeout: 8000 });
   ok(true, 'two separate computers joined through Code.gs with code ' + code);
   const bot = () => setInterval(() => {
-    if (G.mode === 'call') { const b = $$('[data-call]'); if (b.length) pick(b).click(); else if ($('#goFor')) $('#puntBtn').click(); }
+    if (G.mode === 'call') { const b = $$('[data-call]'); if ($('[data-kick]')) $('[data-kick]').click(); else if (b.length) pick(b).click(); else if ($('#goFor')) (Math.random() < .5 && !$('#fgBtn').disabled ? $('#fgBtn') : $('#puntBtn')).click(); }
     else if (G.mode === 'huddle') { if (!G.answered) { G.clockStart = -1e9; answer(Math.random() < .6 ? G.q.choices.findIndex(c => c.right) : 0); } else if ($('#hNext').offsetParent) $('#hNext').click(); }
     else if (G.mode === 'break') closeBreak();
     else if (G.mode === 'result' && $('#nextBtn')) $('#nextBtn').click();

@@ -15,7 +15,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await page.evaluate(() => PLAYS_PER_GAME === 24 && CPU_MISS === 0.4 && CPU_BREAK_POINTS === 2), 'pickers set Quick and Easy');
   ok((await page.textContent('#lenTxt')).includes('6 plays'), 'title text shows the game length');
   await page.screenshot({ path: out + '/s5-title.png' });
-  await page.click('#kick');
+  await page.click('#kick'); await page.evaluate(() => { G.pending = null; changePoss('home', 25); setFormation(); showCalls(); }); /* skip the opening kickoff */
   // tendency reads (Monte Carlo over the pick functions)
   const r = await page.evaluate(() => {
     const count = (fn, n) => { const c = {}; for (let i = 0; i < n; i++) { const k = fn(); c[k] = (c[k] || 0) + 1; } return c; };

@@ -99,8 +99,8 @@ function netCheck() {
   if (!NET || !G) return;
   if (NET.inbox['bye:'] && G.mode !== 'final' && G.mode !== 'left') return otherCoachLeft();
   if (G.mode === 'lobby' && NET.guest) return startNetGame();
-  if (G.mode === 'wait' && NET.inbox['ready:' + G.play]) return resolveReady();
-  if (G.mode === 'wait4' && NET.inbox['fourth:' + G.play]) return resolveFourth();
+  if (G.mode === 'wait' && NET.inbox['ready:' + G.seq]) return resolveReady();
+  if (G.mode === 'wait4' && NET.inbox['fourth:' + G.seq]) return resolveFourth();
 }
 
 // ---------- lobby screens ----------
@@ -142,7 +142,7 @@ function joinGame() {
 function startNetGame() {
   $('#net').classList.remove('show'); stopSpeech();
   newGame({ me: NET.side, net: { code: NET.code, seed: NET.seed } });
-  banner('Kickoff', `${meN()} vs ${opN()} · Head-to-Head · ${TEAMS.home.short} get the ball first`, '');
+  banner('Head-to-Head', `${meN()} vs ${opN()} · ${TEAMS.away.short} kick off to the ${TEAMS.home.short}`, '');
 }
 function otherCoachLeft() {
   G.mode = 'left'; closeHuddle(); $('#break').classList.remove('show'); netStop();
@@ -154,7 +154,9 @@ function otherCoachLeft() {
 function sendReady() {
   closeHuddle();
   const off = userOnOffense();
-  netSend({ t: 'ready', k: G.play, call: off ? G.offCall : G.defCall, q: G.userQ, mods: G.mods, ratings: G.ratings[G.me], notes: G.myNotes || [] });
+  netSend({ t: 'ready', k: G.seq, call: G.pending ? G.hSide : off ? G.offCall : G.defCall, q: G.userQ, mods: G.mods, ratings: G.ratings[G.me], notes: G.myNotes || [] });
+  // Field goals and extra points: only the kicking team has a huddle, so the kicker does not wait.
+  if (G.pending && (G.pending.kind === 'fg' || G.pending.kind === 'pat')) return kickGo();
   waitFor('wait', `Waiting for the ${opN()} coach to finish the huddle...`);
   netCheck();
 }
@@ -166,9 +168,10 @@ function waitFor(mode, text) {
 }
 // Both halves are in: same seed, same math, same animation on both screens.
 function resolveReady() {
-  const m = NET.inbox['ready:' + G.play]; delete NET.inbox['ready:' + G.play];
+  const m = NET.inbox['ready:' + G.seq]; delete NET.inbox['ready:' + G.seq];
   const opp = other(G.me);
   G.ratings[opp] = JSON.parse(JSON.stringify(m.ratings));
+  if (G.pending) { G.cpuQ = m.q; G.cpuNotes = []; G.mods = Object.assign({}, G.mods, m.mods); return kickGo(); }
   if (userOnOffense()) G.defCall = m.call; else G.offCall = m.call;
   G.cpuQ = m.q; G.cpuNotes = (m.notes || []).map(n => `${opN()} ${n}`);
   G.mods = Object.assign({}, G.mods, m.mods);
@@ -176,11 +179,11 @@ function resolveReady() {
   if (oq === 'delay') return delayOfGame();
   snap();
 }
-// 4th down: the offense coach decides; the defense coach waits for it.
-function sendFourth(go) { netSend({ t: 'fourth', k: G.play, go }); }
+// 4th down: the offense coach decides (go, punt, fg); the defense coach waits for it.
+function sendFourth(choice) { netSend({ t: 'fourth', k: G.seq, choice }); }
 function resolveFourth() {
-  const m = NET.inbox['fourth:' + G.play]; delete NET.inbox['fourth:' + G.play];
-  if (m.go) { G.goForIt = true; showCalls(); } else punt();
+  const m = NET.inbox['fourth:' + G.seq]; delete NET.inbox['fourth:' + G.seq];
+  if (m.choice === 'go') { G.goForIt = true; showCalls(); } else { G.pending = { kind: m.choice, kicker: G.poss }; showCalls(); }
 }
 // Shown under the waiting dots if the other coach takes a long time.
 setInterval(() => {

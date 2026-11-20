@@ -4,5 +4,5 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p game
-{ cat src/page.html; for f in test-questions core draw plays net main; do cat src/$f.js; done; echo '</script></body></html>'; } > game/index.html
+{ cat src/page.html; for f in test-questions core draw plays kicks net main; do cat src/$f.js; done; echo '</script></body></html>'; } > game/index.html
 echo "Built game/index.html ($(wc -c < game/index.html) bytes)"

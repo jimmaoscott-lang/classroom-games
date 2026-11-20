@@ -8,7 +8,7 @@ const out = process.argv[2] || '/tmp';
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('file://' + path.resolve('game/index.html') + '?len=Quick');
-  await page.click('#kick');
+  await page.click('#kick'); await page.evaluate(() => { G.pending = null; changePoss('home', 25); setFormation(); showCalls(); }); /* skip the opening kickoff */
   const bad = await page.evaluate(() => {
     const probs = []; let n = 0;
     const kinds = [

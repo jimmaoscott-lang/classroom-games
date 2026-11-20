@@ -12,7 +12,7 @@ function newGame(opts) {
     }
   });
   G = { me: opts.me || 'home', net: opts.net || null,
-    score: { home: 0, away: 0 }, poss: 'home', ballX: 25, down: 1, toGo: 10, play: 0, points: 0, right: 0, wrong: 0,
+    score: { home: 0, away: 0 }, poss: 'away', ballX: 65, down: 1, toGo: 10, play: 0, seq: 0, pending: { kind: 'kickoff', kicker: 'away' }, points: 0, right: 0, wrong: 0,
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
     accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
     streak: 0, wrongRun: [], flags: 0, lockUntil: 0, log: [], cpuPoints: 0, injuries: 0, spent: 0,
@@ -70,23 +70,36 @@ function cpuGoesForIt() {
 }
 // The computer team's huddle: same rules as the student. One question, a second chance after a miss.
 // Returns 'clean', 'shaky' (missed once), 'delay' (offense missed twice) or 'blown' (defense missed twice).
-function cpuHuddle(side) {
+function cpuHuddle(side) { // side: 'offense', 'defense', or a special teams phase (kickoff, return, punt, fg, pat)
   const notes = [];
   const miss = () => Math.random() < CPU_MISS;
   G.cpuMisses = G.cpuMisses || 0;
   if (!miss()) { G.cpuStreak = 0; return { q: 'clean', notes }; }
   G.cpuStreak++; G.cpuMisses++;
   // first miss: one random penalty (on-field effect or a rating loss for a player in the play)
-  const players = side === 'offense' ? RATINGS_USED[G.offCall][0] : DEF_PLAYERS[G.defCall];
+  const players = phasePlayers(side);
   const canDrop = players.filter(p => G.ratings.away[p].now > G.ratings.away[p].start);
   if (canDrop.length && Math.random() < 0.5) {
     const p = pick(canDrop), r = G.ratings.away[p]; r.now = Math.max(r.start, r.now - 2); notes.push(`Comets ${p} lost 2 rating`);
-  } else if (side === 'offense') G.mods.slowSnap = true; else G.mods.slowRead = true;
+  } else fieldEffect(side);
   let q = 'shaky';
-  if (miss()) { G.cpuStreak++; G.cpuMisses++; q = side === 'offense' ? 'delay' : 'blown'; }
+  if (miss()) { G.cpuStreak++; G.cpuMisses++; q = side === 'offense' ? 'delay' : side === 'defense' ? 'blown' : 'bad'; }
   if (G.cpuStreak >= INJURY_STREAK) { G.cpuStreak = 0; notes.push(injurePlayer('away')); }
   return { q, notes };
 }
+
+// Players in the play and the on-field first-miss effect for each huddle phase.
+function phasePlayers(phase) { return phase === 'offense' ? RATINGS_USED[G.offCall][0] : phase === 'defense' ? DEF_PLAYERS[G.defCall] : PHASE_PLAYERS[phase]; }
+const FIELD_TEXT = { offense: 'slower snap and worse blocking on this play.', defense: 'confusion and a slower read on this play.', kickoff: 'a shorter kick.', punt: 'a shorter punt.', fg: 'a harder kick (less range).', pat: 'a harder kick.', return: 'the return blocking breaks down.' };
+function fieldEffect(phase) {
+  if (phase === 'offense') G.mods.slowSnap = true; else if (phase === 'defense') G.mods.slowRead = true;
+  else if (phase === 'return') G.mods.badBlock = true; else G.mods.shortKick = true;
+  return FIELD_TEXT[phase];
+}
+// Second miss on special teams: the full consequence for that phase.
+const SECOND_MISS = { kickoff: 'The kick is shanked out of bounds.', return: 'Your return team is confused, so a fumble is more likely.', punt: 'Bad snap to the punter. The punt may be blocked or shanked.', fg: 'Bad snap! The kick will likely miss.', pat: 'Bad snap! The kick will likely miss.' };
+// CPU field goal range: tries it when the make chance is about 45% or better.
+const cpuFgOk = () => fgDistance() <= 48 + (effRating(G.poss, 'Kicker') - 65) * 0.3 + 3 && fgDistance() <= FG_MAX;
 
 // Tell the student when the computer read a tendency ("keying on your Run Inside").
 function keyingOn() {
@@ -101,14 +114,17 @@ function keyingOn() {
 // ---------- panel ----------
 function showCalls() {
   G.mode = 'call'; hideBanner(); updateHud();
+  if (G.pending) return showKick();
   const calls = $('#calls');
   if (userOnOffense()) {
     if (G.down === 4 && !G.goForIt) {
       $('#label').textContent = `Coach ${meN()} · 4th down · Your call`;
-      calls.innerHTML = `<button class="call" id="goFor">Go For It</button><button class="call" id="puntBtn">Punt</button><button class="call" disabled>Field Goal<small>Coming in step 8</small></button>`;
-      $('#hint').textContent = 'Punts are automatic until special teams are built (step 8).';
-      $('#goFor').onclick = () => { if (G.net) sendFourth(true); G.goForIt = true; showCalls(); };
-      $('#puntBtn').onclick = () => { if (G.net) sendFourth(false); punt(); };
+      const fd = fgDistance(), fgOn = fd <= FG_MAX;
+      calls.innerHTML = `<button class="call" id="goFor">Go For It</button><button class="call" id="puntBtn">Punt</button><button class="call" id="fgBtn"${fgOn ? '' : ' disabled'}>Field Goal<small>${fgOn ? fd + ' yards' : 'Too far (' + fd + ' yards)'}</small></button>`;
+      $('#hint').textContent = '';
+      $('#goFor').onclick = () => fourthChoice('go');
+      $('#puntBtn').onclick = () => fourthChoice('punt');
+      $('#fgBtn').onclick = () => fourthChoice('fg');
       return;
     }
     $('#label').textContent = `Coach ${meN()} · Offense · Call the play`;
@@ -117,17 +133,100 @@ function showCalls() {
     $$('[data-call]').forEach(b => b.onclick = () => callOffense(b.dataset.call));
   } else {
     if (G.net && G.down === 4 && !G.goForIt) return waitFor('wait4', `4th down · Waiting for the ${opN()} coach to decide...`);
-    if (!G.net && G.down === 4 && !cpuGoesForIt()) {
-      $('#label').textContent = 'Comets · 4th down';
-      calls.innerHTML = ''; $('#hint').textContent = '';
-      G.mode = 'cpuPunt'; setTimeout(() => { if (G.mode === 'cpuPunt') punt(); }, 700);
-      return;
-    }
+    if (!G.net && G.down === 4 && !cpuGoesForIt()) { G.pending = { kind: cpuFgOk() ? 'fg' : 'punt', kicker: G.poss }; return showKick(); }
     $('#label').textContent = `Coach ${meN()} · Defense · Call the defense` + (G.down === 4 ? ` · ${opN()} are going for it!` : '');
     calls.innerHTML = DEF_CALLS.map(c => `<button class="call" data-call="${c}">${c}</button>`).join('');
     $('#hint').textContent = '';
     $$('[data-call]').forEach(b => b.onclick = () => callDefense(b.dataset.call));
   }
+}
+// 4th down choice by the offense coach: go for it, punt, or field goal.
+function fourthChoice(c) {
+  if (G.net) sendFourth(c);
+  if (c === 'go') { G.goForIt = true; return showCalls(); }
+  G.pending = { kind: c, kicker: G.poss }; showCalls();
+}
+// ---------- special teams screen ----------
+function showKick() {
+  const P = G.pending, Kt = P.kicker, mine = Kt === G.me, kind = P.kind;
+  G.poss = Kt; G.goForIt = false; G.mods = {}; G.userQ = null; G.cpuQ = null; G.cpuNotes = []; G.offCall = G.defCall = null;
+  if (kind === 'kickoff') G.ballX = ownSpot(Kt, P.from || 35);
+  if (kind === 'pat') G.ballX = ownSpot(other(Kt), 15);
+  setKickFormation(kind); updateHud();
+  const calls = $('#calls'), fd = fgDistance();
+  const what = kind === 'fg' ? `${fd}-yard field goal` : KICK_NAMES[kind].toLowerCase();
+  $('#hint').textContent = '';
+  const one = (label, phase) => { calls.innerHTML = `<button class="call" data-kick="${phase}">${label}</button>`; $('[data-kick]').onclick = () => startKick(phase === 'watch' ? null : phase); };
+  if (mine) {
+    $('#label').textContent = `Coach ${meN()} · ${KICK_NAMES[kind]}${kind === 'fg' ? ' · ' + fd + ' yards' : ''}`;
+    one({ kickoff: 'Kick off', punt: 'Punt it', fg: `Kick the field goal (${fd} yards)`, pat: 'Kick the extra point' }[kind], kind);
+    $('#hint').textContent = 'Answer the huddle question for a clean kick.';
+  } else if (kind === 'kickoff' || kind === 'punt') {
+    $('#label').textContent = `Coach ${meN()} · ${kind === 'punt' ? 'Punt' : 'Kick'} return`;
+    one(kind === 'punt' ? 'Return the punt' : 'Return the kick', 'return');
+    $('#hint').textContent = 'Answer the huddle question so your blockers set up the return.';
+  } else {
+    if (G.net) return waitFor('wait', `${opN()} are lining up for the ${what}...`);
+    $('#label').textContent = `${opN()} · ${what}`;
+    one('Watch the kick', 'watch');
+  }
+}
+function startKick(phase) {
+  G.mods = {}; G.userQ = null; G.cpuQ = null; G.cpuNotes = [];
+  const P = G.pending, two = P.kind === 'kickoff' || P.kind === 'punt';
+  if (!G.net) { // the computer team's half of the kick
+    const cpuPhase = phase === 'return' || phase === null ? P.kind : two ? 'return' : null;
+    if (cpuPhase) { const h = cpuHuddle(cpuPhase); G.cpuQ = h.q; G.cpuNotes = h.notes; }
+  }
+  if (!phase) return kickGo();
+  openHuddle(1, phase);
+}
+// Both halves are in (or the kicker's alone for field goals and extra points): kick it.
+function kickGo() {
+  closeHuddle();
+  const P = G.pending, mine = P.kicker === G.me, two = P.kind === 'kickoff' || P.kind === 'punt';
+  const kq = (mine ? G.userQ : G.cpuQ) || 'clean', rq = two ? ((mine ? G.cpuQ : G.userQ) || 'clean') : null;
+  withSeed('kick' + G.seq, () => { G.res = resolveKick(P.kind, kq, rq, G.mods); setKickFormation(P.kind); G.plan = planKick(G.res); });
+  G.mode = 'anim'; G.t0 = performance.now(); G.flag = null;
+  $('#label').textContent = KICK_NAMES[P.kind]; $('#calls').innerHTML = ''; $('#hint').textContent = '';
+}
+function finishKick() {
+  const r = G.res, P = G.pending, Kt = P.kicker, R = other(Kt), s = dir(), at = u => clamp(G.ballX + s * u, 1, 99);
+  const kN = TEAMS[Kt].short, rN = TEAMS[R].short, mine = Kt === G.me;
+  const counts = P.kind === 'punt' || P.kind === 'fg'; // 4th-down plays count toward the game length
+  G.pending = null; G.lastKind = P.kind; G.seq++;
+  let healed = '', big = '', cls = '';
+  if (counts) { G.play++; G.goForIt = false; healed = tickInjuries(); }
+  const small = [], good = c => c ? 'td' : 'flag'; // banner color from this coach's point of view
+  if (P.kind === 'kickoff' || P.kind === 'punt') {
+    const word = P.kind === 'kickoff' ? 'Kickoff' : 'Punt';
+    if (r.out === 'touchback') { changePoss(R, ownSpot(R, P.kind === 'kickoff' ? 25 : 20)); big = 'Touchback'; }
+    else if (r.out === 'oob') { changePoss(R, ownSpot(R, 40)); big = 'Kickoff out of bounds!'; cls = good(!mine); small.push(`${kN} missed their huddle twice · ${rN} get the ball at their 40`); }
+    else if (r.out === 'shank') { changePoss(R, at(r.land)); big = `Shanked punt · ${r.land} yards`; cls = good(!mine); }
+    else if (r.out === 'blocked') { changePoss(R, at(r.endU)); big = 'Punt blocked!'; cls = good(!mine); }
+    else if (r.out === 'downed') { changePoss(R, at(r.land)); big = `${r.land}-yard punt · Downed`; cls = good(mine); }
+    else if (r.out === 'fair') { changePoss(R, at(r.land)); big = `${r.land}-yard punt · Fair catch`; }
+    else if (r.td) { G.score[R] += 6; big = `${word} return touchdown!`; cls = good(!mine); small.push(`${r.ret}-yard return by the ${rN}`); G.pending = { kind: 'pat', kicker: R }; }
+    else if (r.fumble) { changePoss(Kt, at(r.endU)); big = `Fumble! ${kN} recover`; cls = good(mine); }
+    else { changePoss(R, at(r.endU)); big = `${r.ret}-yard ${P.kind === 'punt' ? 'punt ' : ''}return`; if (r.ret >= 30) cls = good(!mine); }
+    if (!r.td) small.push(`${TEAMS[G.poss].short} ball on ${spot(G.ballX)}`);
+  } else if (P.kind === 'fg') {
+    if (r.good) { G.score[Kt] += 3; big = `Field goal is good! ${r.dist} yards`; cls = good(mine); G.pending = { kind: 'kickoff', kicker: Kt }; }
+    else {
+      const lim = ownSpot(R, 20); changePoss(R, R === 'home' ? Math.max(G.ballX, lim) : Math.min(G.ballX, lim));
+      big = `No good! ${r.miss}`; cls = good(!mine); small.push(`${r.dist} yards · ${rN} ball on ${spot(G.ballX)}`);
+    }
+  } else {
+    if (r.good) { G.score[Kt] += 1; big = 'Extra point is good'; } else big = `Extra point no good · ${r.miss}`;
+    cls = good(r.good === mine); G.pending = { kind: 'kickoff', kicker: Kt };
+  }
+  if (G.cpuQ === 'shaky') small.push(`${opN()} missed their huddle`);
+  if (G.cpuQ === 'bad' && r.out !== 'oob') small.push(`${opN()} missed their huddle twice`);
+  (G.cpuNotes || []).forEach(n => small.push(n));
+  banner(big, small.join(' · ') + healed + (counts ? quarterNote() : ''), cls);
+  G.mode = 'result'; G.resetCam = true; updateHud(); syncNote();
+  $('#label').textContent = 'Result';
+  showNext(nextLabel(), afterResult);
 }
 function showNext(text, fn) {
   $('#calls').innerHTML = `<button class="go" id="nextBtn">${text}</button>`;
@@ -157,7 +256,7 @@ function nextQuestion() {
 }
 function openHuddle(attempt, side) {
   G.mode = 'huddle'; G.attempt = attempt; G.hSide = side || G.hSide; G.q = nextQuestion(); G.answered = false;
-  $('#hTitle').textContent = (G.hSide === 'offense' ? 'Offense huddle · ' + G.offCall : 'Defense huddle · ' + G.defCall);
+  $('#hTitle').textContent = HUDDLE_NAMES[G.hSide] + (G.hSide === 'offense' ? ' · ' + G.offCall : G.hSide === 'defense' ? ' · ' + G.defCall : G.hSide === 'fg' ? ' · ' + fgDistance() + ' yards' : '');
   $('#hTry').textContent = attempt === 1 ? '' : 'Second chance';
   $('#qText').textContent = G.q.src.q;
   $('#choices').innerHTML = G.q.choices.map((c, i) => `<button class="choice" data-i="${i}"><span class="let">${'ABCD'[i]}</span><span>${esc(c.text)}</span></button>`).join('');
@@ -180,11 +279,11 @@ function stopSpeech() { try { window.speechSynthesis && speechSynthesis.cancel()
 
 function answer(i) {
   if (G.answered || performance.now() < G.lockUntil) return; G.answered = true;
-  const c = G.q.choices[i], off = G.hSide === 'offense';
+  const c = G.q.choices[i], off = G.hSide === 'offense', kick = KICK_PHASES.includes(G.hSide);
   const fast = (performance.now() - G.clockStart) / 1000 < minReadSeconds();
   // One log row per answer (saved to the Results tab once the Sheet is connected in step 9).
   const entry = { time: Date.now(), question: G.q.src.q, teks: G.q.src.teks || '', result: c.right ? 'Right' : 'Wrong', accom: accomText(), guess: false,
-    event: (off ? 'Offense huddle' : 'Defense huddle') + (G.attempt === 2 ? ' · second chance' : '') };
+    event: HUDDLE_NAMES[G.hSide] + (G.attempt === 2 ? ' · second chance' : '') };
   G.log.push(entry);
   $$('.choice').forEach((b, j) => { b.disabled = true; if (G.q.choices[j].right) b.classList.add('right'); });
   if (!c.right) $$('.choice')[i].classList.add('wrong');
@@ -195,16 +294,17 @@ function answer(i) {
     const pts = G.attempt === 1 ? 2 : 1; G.points += pts; popPoints(pts);
     G.userQ = G.attempt === 1 ? 'clean' : 'shaky';
     fb.className = 'good';
-    fb.textContent = G.attempt === 1 ? `Correct! Clean ${off ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
-    next.textContent = G.net ? 'Ready to snap' : 'Snap the ball'; next.onclick = G.net ? sendReady : snap;
+    fb.textContent = G.attempt === 1 ? `Correct! Clean ${off || kick ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
+    next.textContent = goText(); next.onclick = G.net ? sendReady : snap;
   } else {
     G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: i, entry });
     fb.className = 'bad';
     if (G.attempt === 1) {
-      fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(off) + ' Answer one more to clear it up.';
+      fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(G.hSide) + ' Answer one more to clear it up.';
       next.textContent = 'Second chance question'; next.onclick = () => openHuddle(2);
-    } else if (off) { G.userQ = 'delay'; fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = G.net ? sendReady : delayOfGame; }
-    else { G.userQ = 'blown'; fb.textContent = 'Not quite. Missed assignment! Your defense is out of position, so a big play is more likely.'; next.textContent = G.net ? 'Ready to snap' : 'Snap the ball'; next.onclick = G.net ? sendReady : snap; }
+    } else if (kick) { G.userQ = 'bad'; fb.textContent = 'Not quite. ' + SECOND_MISS[G.hSide]; next.textContent = goText(); next.onclick = G.net ? sendReady : snap; }
+    else if (off) { G.userQ = 'delay'; fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = G.net ? sendReady : delayOfGame; }
+    else { G.userQ = 'blown'; fb.textContent = 'Not quite. Missed assignment! Your defense is out of position, so a big play is more likely.'; next.textContent = goText(); next.onclick = G.net ? sendReady : snap; }
     if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(G.me); }
     const g = checkGuessing(); if (g) extra += ' ' + g;
     fb.textContent += extra;
@@ -212,6 +312,11 @@ function answer(i) {
   if (G.accom.readAloud) speak((c.right ? 'Correct. ' : 'Not quite. The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.)\s*/, ''));
   updateHud();
   next.style.display = 'block';
+}
+// Text on the button after the huddle.
+function goText() {
+  if (G.net) return G.hSide === 'return' ? 'Ready for the kick' : 'Ready to snap';
+  return { kickoff: 'Kick off', return: 'Ready for the kick' }[G.hSide] || 'Snap the ball';
 }
 // 3 wrong answers in a row: a random player is shaken up and plays at his starting rating for 3 plays.
 function injurePlayer(team) {
@@ -249,17 +354,14 @@ function lockFor(secs, msg) {
   tick();
 }
 // First miss: ONE random penalty from the options that can actually happen right now.
-function firstMissPenalty(off) {
-  const players = off ? RATINGS_USED[G.offCall][0] : DEF_PLAYERS[G.defCall];
+function firstMissPenalty(phase) {
+  const players = phasePlayers(phase);
   const R = G.ratings[G.me], canDrop = players.filter(p => R[p].now > R[p].start);
   const opts = ['field'];
   if (canDrop.length) opts.push('rating');
   if (G.points > 0) opts.push('point');
   const o = pick(opts);
-  if (o === 'field') {
-    if (off) { G.mods.slowSnap = true; return 'slower snap and worse blocking on this play.'; }
-    G.mods.slowRead = true; return 'confusion and a slower read on this play.';
-  }
+  if (o === 'field') return fieldEffect(phase);
   if (o === 'rating') { const p = pick(canDrop), r = R[p], was = r.now; r.now = Math.max(r.start, r.now - 2); return `${p} loses 2 rating points (${was} to ${r.now}).`; }
   G.points--; return 'the team loses 1 unspent skill point.';
 }
@@ -277,7 +379,7 @@ function delayOfGame() {
   const notes = G.cpuNotes && !userOnOffense() ? G.cpuNotes.map(n => ' · ' + n).join('') : '';
   const back = Math.min(5, Math.floor(ownYards()) / 2);
   const s = dir();
-  G.ballX -= s * back; G.toGo += back; G.play++;
+  G.ballX -= s * back; G.toGo += back; G.play++; G.seq++; G.lastKind = null;
   const healed = tickInjuries();
   G.flag = { x: G.ballX + s * (back - 1), d: .45 };
   G.defCall = null; setFormation();
@@ -286,11 +388,12 @@ function delayOfGame() {
   showNext(nextLabel(), afterResult);
 }
 function snap() {
+  if (G.pending) return kickGo();
   closeHuddle();
   const oq = userOnOffense() ? G.userQ : G.cpuQ, dq = userOnOffense() ? G.cpuQ : G.userQ;
   if (oq === 'delay') return delayOfGame();
   // Head-to-Head: both computers use the same random numbers for this play, so both see the same result.
-  withSeed('play' + G.play, () => {
+  withSeed('play' + G.seq, () => {
     G.res = resolvePlay(G.offCall, G.defCall, oq, dq, G.mods);
     setFormation();
     G.plan = planPlay(G.res);
@@ -299,23 +402,9 @@ function snap() {
   $('#label').textContent = userOnOffense() ? `${G.offCall} vs ${G.defCall}` : `${G.defCall} vs ${opN()} ${G.offCall}`;
   $('#calls').innerHTML = ''; $('#hint').textContent = '';
 }
-function punt() {
-  const s = dir(), K = G.poss, R = other(K), toGoal = ytg();
-  let big;
-  const rolls = withSeed('punt' + G.play, () => [clamp(Math.round(40 + gauss() * 6), 28, 55), irnd(0, 10)]), dist = rolls[0];
-  G.play++; G.goForIt = false;
-  const healed = tickInjuries();
-  if (dist >= toGoal) { changePoss(R, ownSpot(R, 20)); big = `${TEAMS[K].short} punt · Touchback`; }
-  else { const ret = rolls[1]; changePoss(R, G.ballX + s * (dist - ret)); big = `${TEAMS[K].short} punt · ${dist} yards`; }
-  const small = `${TEAMS[R].short} ball on ${spot(G.ballX)} · The punt team comes in step 8` + healed + quarterNote();
-  G.defCall = null; setFormation();
-  banner(big, small, 'flag');
-  G.mode = 'result'; updateHud(); syncNote();
-  showNext(nextLabel(), afterResult);
-}
 function finishPlay() {
   const r = G.res, s = dir(), O = G.poss, D = other(O), userOff = O === G.me, dN = TEAMS[D].short, oN = TEAMS[O].short;
-  G.play++; G.goForIt = false;
+  G.play++; G.seq++; G.goForIt = false; G.lastKind = null;
   const healed = tickInjuries();
   let big = '', cls = '';
   const small = [];
@@ -323,16 +412,16 @@ function finishPlay() {
   const good = userOff ? 'td' : 'flag', bad = userOff ? 'flag' : 'td'; // banner colors from this coach's point of view
   if (r.kind === 'int') {
     cls = bad; big = userOff ? 'Intercepted!' : 'Interception!';
-    if (r.pick6) { G.score[D] += 7; big = userOff ? `Pick six! ${dN} score` : `Pick six! Touchdown ${dN}!`; changePoss(O, ownSpot(O, 25)); small.push('Returned all the way'); }
+    if (r.pick6) { G.score[D] += 6; big = userOff ? `Pick six! ${dN} score` : `Pick six! Touchdown ${dN}!`; G.pending = { kind: 'pat', kicker: D }; small.push('Returned all the way'); }
     else if (r.touchback) { changePoss(D, ownSpot(D, 20)); small.push('Caught in the end zone · Touchback'); }
     else { changePoss(D, G.ballX + s * r.spot); small.push(`${dN} ball on ${spot(G.ballX)}`); }
   } else if (r.td) {
-    G.score[O] += 7; big = userOff ? 'Touchdown!' : `${oN} touchdown`; cls = good;
-    small.push(`${r.yds}-yard ${r.kind === 'complete' ? 'pass' : 'run'} · Extra point is automatic for now`);
-    changePoss(D, ownSpot(D, 25));
+    G.score[O] += 6; big = userOff ? 'Touchdown!' : `${oN} touchdown`; cls = good;
+    small.push(`${r.yds}-yard ${r.kind === 'complete' ? 'pass' : 'run'}`);
+    G.pending = { kind: 'pat', kicker: O };
   } else if (r.safety) {
     G.score[D] += 2; big = 'Safety!'; cls = bad;
-    small.push(`${dN} get 2 points and the ball`); changePoss(D, ownSpot(D, 30));
+    small.push(`${dN} get 2 points · ${oN} free kick from their 20`); G.pending = { kind: 'kickoff', kicker: O, from: 20 };
   } else if (r.fumble) {
     G.ballX += s * r.yds; big = `Fumble! ${dN} recover`; cls = bad;
     changePoss(D, G.ballX); small.push(`${dN} ball on ${spot(G.ballX)}`);
@@ -361,24 +450,27 @@ function finishPlay() {
   showNext(nextLabel(), afterResult);
 }
 // Head-to-Head: a running record of the game state after every play, so tests can check both screens match.
-function syncNote() { if (G.net) (G.syncLog = G.syncLog || []).push([G.play, G.score.home, G.score.away, G.poss, Math.round(G.ballX * 10) / 10, G.down, Math.round(G.toGo * 10) / 10].join(',')); }
+function syncNote() { if (G.net) (G.syncLog = G.syncLog || []).push([G.seq, G.play, G.score.home, G.score.away, G.poss, Math.round(G.ballX * 10) / 10, G.down, Math.round(G.toGo * 10) / 10].join(',')); }
 const quarterNote = () => (G.play % PLAYS_PER_QUARTER === 0 && G.play < PLAYS_PER_GAME && G.play !== PLAYS_PER_GAME / 2) ? ` · End of Quarter ${G.play / PLAYS_PER_QUARTER}` : '';
-const nextLabel = () => G.play >= PLAYS_PER_GAME ? 'See final score' : G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone ? 'Halftime' : 'Next play';
+const nextLabel = () => G.pending && G.pending.kind === 'pat' ? 'Extra point' : G.play >= PLAYS_PER_GAME ? 'See final score' : G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone ? 'Halftime' : 'Next play';
 function afterResult() {
   G.flag = null; G.resetCam = false; G.defCall = null;
+  if (G.pending && G.pending.kind === 'pat') return showCalls(); // extra point right after the touchdown, before any break
   if (G.play >= PLAYS_PER_GAME) return showFinal();
+  if (G.lastKind === 'kickoff') G.brk.poss = G.poss; // a kickoff is not a break by itself
+  G.lastKind = null;
   // Breaks come after a score, a change of possession, and the end of each quarter.
   const total = G.score.home + G.score.away;
   const why = [];
   if (total !== G.brk.score) why.push('score');
   if (G.poss !== G.brk.poss) why.push('poss');
-  if (G.play % PLAYS_PER_QUARTER === 0) why.push('quarter');
+  if (G.play > 0 && G.play % PLAYS_PER_QUARTER === 0 && G.qBreakAt !== G.play) { why.push('quarter'); G.qBreakAt = G.play; } // once per quarter, even with kicks after the last play
   const half = G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone;
   let resume = () => { setFormation(); showCalls(); };
   if (half) {
     G.halftimeDone = true; G.goForIt = false;
-    changePoss('away', ownSpot('away', 25)); setFormation(); updateHud();
-    resume = () => { setFormation(); showCalls(); banner('2nd half', 'Comets get the ball to start the 2nd half', ''); };
+    G.pending = { kind: 'kickoff', kicker: 'home' }; // Pelicans kick off to start the 2nd half
+    resume = () => { showCalls(); banner('2nd half', `${TEAMS.home.short} kick off to start the 2nd half`, ''); };
   }
   G.brk = { poss: G.poss, score: total };
   if (!why.length) return resume();
@@ -467,7 +559,7 @@ function updateHud() {
   $('#homePoss').style.visibility = G.poss === 'home' ? 'visible' : 'hidden';
   $('#awayPoss').style.visibility = G.poss === 'away' ? 'visible' : 'hidden';
   const goal = G.toGo >= ytg();
-  $('#dd').textContent = `${ord(G.down)} & ${goal ? 'Goal' : Math.max(1, Math.round(G.toGo))} · Ball on ${spot(G.ballX)}`;
+  $('#dd').textContent = G.pending && G.mode !== 'result' ? `${KICK_NAMES[G.pending.kind]} · Ball on ${spot(G.ballX)}` : `${ord(G.down)} & ${goal ? 'Goal' : Math.max(1, Math.round(G.toGo))} · Ball on ${spot(G.ballX)}`;
   const p = Math.min(G.play, PLAYS_PER_GAME - 1);
   $('#sub').textContent = `${TEAMS[G.poss].short} ball · Quarter ${Math.floor(p / PLAYS_PER_QUARTER) + 1} · Play ${p % PLAYS_PER_QUARTER + 1} of ${PLAYS_PER_QUARTER}`;
   $('#chip').textContent = `Skill points: ${G.points}`;
@@ -485,7 +577,7 @@ function frame(now) {
     if (G.mode === 'anim') {
       const t = (now - G.t0) / 1000;
       pose(G.plan, t);
-      if (t > G.plan.T + 0.9) finishPlay();
+      if (t > G.plan.T + 0.9) (G.plan.kick ? finishKick : finishPlay)();
     }
     const follow = G.mode === 'anim' || (G.mode === 'result' && G.resetCam);
     const target = follow ? camTarget(G.ball.x, 0) : camTarget(G.ballX, dir());

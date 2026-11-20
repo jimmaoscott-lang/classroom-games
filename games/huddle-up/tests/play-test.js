@@ -23,7 +23,8 @@ const shots = {}; let breaks = 0;
       if (await page.isVisible('#final.show')) break;
       const st = await page.evaluate(() => ({ mode: G.mode, off: G.poss === 'home', down: G.down, play: G.play }));
       if (st.mode === 'call') {
-        if (await page.isVisible('#goFor')) { await page.click(Math.random() < .5 ? '#goFor' : '#puntBtn'); continue; }
+        if (await page.isVisible('[data-kick]')) { await page.click('[data-kick]'); continue; }
+        if (await page.isVisible('#goFor')) { const fg = await page.isEnabled('#fgBtn'); const r = Math.random(); await page.click(fg && r < .4 ? '#fgBtn' : r < .7 ? '#goFor' : '#puntBtn'); continue; }
         const btns = await page.$$('[data-call]');
         if (!btns.length) { await page.waitForTimeout(100); continue; }
         await btns[Math.floor(Math.random() * btns.length)].click(); continue;
@@ -46,8 +47,8 @@ const shots = {}; let breaks = 0;
         await page.click('#hNext'); continue;
       }
       if (st.mode === 'anim') {
-        const key = await page.evaluate(() => (G.poss === 'home' ? 'O-' : 'D-') + G.offCall);
-        if (!seenAnim.has(key)) { seenAnim.add(key); await page.waitForTimeout(key.includes('Deep') || key.includes('Action') ? 2200 : 1300); await page.screenshot({ path: `${out}/anim-${key.replace(/ /g, '')}.png` }); }
+        const key = await page.evaluate(() => G.plan && G.plan.kick ? 'K-' + G.res.kind + '-' + (G.res.out || (G.res.good ? 'good' : 'miss')) : (G.poss === 'home' ? 'O-' : 'D-') + G.offCall);
+        if (!seenAnim.has(key)) { seenAnim.add(key); await page.waitForTimeout(key.startsWith('K-') ? 2400 : key.includes('Deep') || key.includes('Action') ? 2200 : 1300); await page.screenshot({ path: `${out}/anim-${key.replace(/ /g, '')}.png` }); }
         await page.waitForFunction(() => G.mode !== 'anim', null, { timeout: 20000 });
         continue;
       }
@@ -69,7 +70,7 @@ const shots = {}; let breaks = 0;
   console.log('breaks shown:', breaks);
   console.log('animated:', [...seenAnim].join(', '));
   await page.goto('file://' + path.resolve('game/index.html') + '?rc=1&len=Quick');
-  await page.click('#kick'); await page.click('[data-call="Run Inside"]');
+  await page.click('#kick'); await page.evaluate(() => { G.pending = null; changePoss('home', 25); setFormation(); showCalls(); }); /* skip the opening kickoff */ await page.click('[data-call="Run Inside"]');
   console.log('choices with reduced:', await page.$$eval('.choice', b => b.length));
   console.log('errors:', errors.length ? errors : 'none');
   await browser.close();

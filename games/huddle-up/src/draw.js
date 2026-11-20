@@ -40,7 +40,7 @@ function drawField() {
   // line of scrimmage and first-down line (before the snap)
   if (G.mode !== 'anim' && G.mode !== 'result') {
     seg(G.ballX, 0, G.ballX, 1, '#3B82F6', 4.5);
-    const fd = G.ballX + dir() * G.toGo; if (fd > 0 && fd < 100) seg(fd, 0, fd, 1, '#FACC15', 4.5);
+    const fd = G.ballX + dir() * G.toGo; if (!G.pending && fd > 0 && fd < 100) seg(fd, 0, fd, 1, '#FACC15', 4.5);
   }
   // depth shading
   const gr = ctx.createLinearGradient(0, 50, 0, 450); gr.addColorStop(0, 'rgba(0,0,0,.22)'); gr.addColorStop(.5, 'rgba(0,0,0,0)');
@@ -110,6 +110,7 @@ function drawTrainerIcons() {
 function draw() {
   drawField();
   const items = G.actors.map(a => ({ d: a.d, f: () => drawPlayer(a) }));
+  items.push({ d: .5, f: drawGoalPosts });
   const b = G.ball;
   if (!b.carrier) items.push({ d: b.d + 0.001, f: () => { const [x, y] = proj(b.x, b.d); const sc = 0.7 + 0.5 * b.d; drawBallShape(x, y - b.h * sc, sc); } });
   items.sort((p, q) => p.d - q.d).forEach(i => i.f());
