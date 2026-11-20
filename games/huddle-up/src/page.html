@@ -90,7 +90,7 @@ button{font-family:inherit;cursor:pointer}
  <div id="sb">
   <div class="side"><div class="tag" id="homeTag" style="background:#0E7C86">PELICANS</div><div class="score" id="homeScore">0</div><div class="poss" id="homePoss"></div></div>
   <div id="mid"><div id="dd">1st &amp; 10 · Ball on PEL 25</div><div id="sub">Prototype drive · Play 1 of 12</div></div>
-  <div class="side r"><div class="score" id="awayScore">0</div><div class="tag" id="awayTag" style="background:#5B2A86">COMETS</div></div>
+  <div class="side r"><div class="poss" id="awayPoss"></div><div class="score" id="awayScore">0</div><div class="tag" id="awayTag" style="background:#5B2A86">COMETS</div></div>
  </div>
  <div id="fieldBox"><canvas id="field" width="1280" height="450"></canvas>
   <div id="banner"><div class="b1" id="b1"></div><div class="b2" id="b2"></div></div>
@@ -109,16 +109,16 @@ button{font-family:inherit;cursor:pointer}
   <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="hNext">Snap the ball</button></div>
  </div></div>
  <div class="screen show" id="title">
-  <div class="proto">Field prototype · Step 2</div>
+  <div class="proto">Test build · Step 3</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
-  <div class="blurb">You coach the Pelicans offense for 12 plays. Call Run Inside, answer the huddle question, and watch the play. Right answers mean clean blocking and big gains. The other plays, defense, and the full game come in the next build steps.</div>
+  <div class="blurb">Quick game: 4 quarters, 6 plays each. Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution. Wrong answers mean penalties and mistakes.</div>
   <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label></div>
   <button class="go bigbtn" id="kick">Kick Off</button>
   <div class="ver" id="ver"></div>
  </div>
  <div class="screen" id="final">
-  <div class="proto">Prototype complete</div>
+  <div class="proto">Final</div><div class="logo" style="font-size:64px" id="fWin"></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span id="fHome" class="score">0</span><span style="color:#A9B6CA">–</span><span id="fAway" class="score">0</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="stats" id="fStats"></div>
   <button class="go bigbtn" id="again">Play Again</button>

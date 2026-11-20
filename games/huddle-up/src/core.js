@@ -1,0 +1,60 @@
+// Huddle Up: shared helpers, teams, chart values, camera projection.
+var INDEX_VERSION = '0.3.0 all plays';
+const QS = new URLSearchParams(location.search);
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const irnd = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.75;
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function wpick(pairs) { let n = pairs.reduce((s, p) => s + p[1], 0) * Math.random(); for (const p of pairs) { if ((n -= p[1]) <= 0) return p[0]; } return pairs[0][0]; }
+
+const QUARTERS = 4, PLAYS_PER_QUARTER = 6; // Quick game for testing (teacher setting comes later)
+const PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+const CPU_MISS = 0.25; // Normal: computer misses its huddle 25% of the time
+const OFF_CALLS = ['Run Inside', 'Run Outside', 'Short Pass', 'Deep Pass', 'Play Action'];
+const DEF_CALLS = ['Blitz', 'Zone', 'Man Coverage', 'Stack the Box'];
+// Matchup chart from the design plan. G = favors offense, B = favors defense, E = even, R = risky (sack or big play).
+const MATCHUP = {
+  'Run Inside':  { 'Blitz': 'E', 'Zone': 'G', 'Man Coverage': 'G', 'Stack the Box': 'B' },
+  'Run Outside': { 'Blitz': 'G', 'Zone': 'E', 'Man Coverage': 'G', 'Stack the Box': 'E' },
+  'Short Pass':  { 'Blitz': 'G', 'Zone': 'E', 'Man Coverage': 'B', 'Stack the Box': 'G' },
+  'Deep Pass':   { 'Blitz': 'R', 'Zone': 'B', 'Man Coverage': 'E', 'Stack the Box': 'G' },
+  'Play Action': { 'Blitz': 'B', 'Zone': 'G', 'Man Coverage': 'E', 'Stack the Box': 'G' },
+};
+// Ratings compared on each play (offense side vs defense side).
+const RATINGS_USED = {
+  'Run Inside':  [['RB', 'O-Line'], ['D-Line', 'Linebacker']],
+  'Run Outside': [['RB', 'O-Line'], ['D-Line', 'Linebacker']],
+  'Short Pass':  [['QB', 'WR'], ['Secondary', 'Linebacker']],
+  'Deep Pass':   [['QB', 'WR', 'O-Line'], ['Secondary', 'D-Line']],
+  'Play Action': [['QB', 'WR'], ['Linebacker', 'Secondary']],
+};
+// Players "in the play" for the first-miss rating penalty.
+const DEF_PLAYERS = { 'Blitz': ['D-Line', 'Linebacker'], 'Zone': ['Secondary', 'Linebacker'], 'Man Coverage': ['Secondary', 'Linebacker'], 'Stack the Box': ['D-Line', 'Linebacker'] };
+const TEAMS = {
+  home: { name: 'PELICANS', short: 'Pelicans', abbr: 'PEL', jersey: '#0E7C86', helmet: '#F28C28', pants: '#F4F1E8', num: '#FFFFFF', zone: '#0B5F67' },
+  away: { name: 'COMETS', short: 'Comets', abbr: 'COM', jersey: '#5B2A86', helmet: '#F2C14E', pants: '#2B1640', num: '#FFFFFF', zone: '#43206A' },
+};
+// Jersey numbers by role, in formation order.
+const NUMS = {
+  home: { off: { OL: [77, 52, 64, 70, 75], TE: [88], WR: [11, 84, 1], QB: [7], RB: [22] }, def: { DL: [91, 93, 95, 98], LB: [52, 54, 57], CB: [20, 26], S: [31, 35] } },
+  away: { off: { OL: [60, 62, 65, 68, 71], TE: [86], WR: [80, 81, 3], QB: [12], RB: [28] }, def: { DL: [90, 94, 97, 99], LB: [50, 55, 58], CB: [21, 24], S: [30, 33] } },
+};
+const POS = ['QB', 'RB', 'WR', 'O-Line', 'D-Line', 'Linebacker', 'Secondary', 'Kicker'];
+
+let G = null;
+const QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean) }));
+const other = t => t === 'home' ? 'away' : 'home';
+const dir = () => G.poss === 'home' ? 1 : -1;               // offense moves +x (Pelicans) or -x (Comets)
+const ytg = () => G.poss === 'home' ? 100 - G.ballX : G.ballX; // yards to the goal line for the offense
+const ownSpot = (team, yds) => team === 'home' ? yds : 100 - yds; // world x of a team's own N-yard line
+
+// ---------- projection (same math as the Look C mockup) ----------
+// World x: 0 = Pelicans goal line (left), 100 = Comets goal line (right). d: 0 far sideline, 1 near sideline.
+function pt(f, d) { return [160 * (1 - d) + (960 + 320 * d) * f, 50 + 400 * d]; }
+function proj(x, d) { return pt((x - G.camX) / 50 + 0.5, d); }
+const camTarget = (x, s) => clamp(x + 8 * (s || 1), 15, 85);
