@@ -188,7 +188,7 @@ var SAMPLE_QUESTIONS = [
   ['Who were the "Okies"?', 'Farm families who moved west to escape the Dust Bowl', 'New York bankers who lost everything', 'World War I veterans', 'Union leaders in Detroit', '', 'Prototype test', ''],
 ];
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.5.0 computer coach';
+var INDEX_VERSION = '0.5.1 pass rush';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -570,6 +570,7 @@ function planPlay(res) {
     }
     const tThrow = SNAP + dropT + holdT;
     ballSeg({ t0: SNAP + .15, t1: tThrow, type: 'hold', a: qb });
+    passRush(qb, depth, tThrow, res.kind === 'incomplete');
     // target receiver and catch point
     const target = call === 'Short Pass' ? pick([wrs[2], wrs[0], wrs[1]]) : pick([wrs[0], wrs[1]]);
     const air = res.air;
@@ -619,15 +620,33 @@ function planPlay(res) {
   }
   // everyone else on defense pursues; a few blockers follow the play
   defense().filter(x => x !== P.tackler).forEach((x, i) => {
-    const p = cutAt(x, Math.min(tC + (x.role === 'DL' ? .4 : 0), T));
+    const p = cutAt(x, Math.min(tC + (x.role === 'DL' && isRun ? .4 : 0), T));
     const ang = i * 2.4, rad = res.td ? 3 + (i % 4) : 1.6 + (i % 3) * 0.9;
-    const k = x.role === 'DL' ? 0.35 : x.role === 'CB' ? 0.75 : 0.9;
+    const k = x.role === 'DL' ? 0.6 : x.role === 'CB' ? 0.75 : 0.9;
     const tu = end[0] + Math.cos(ang) * rad + (res.td ? -4 : 1), td = clamp(end[1] + Math.sin(ang) * rad / 53, .03, .97);
     K(x, T, lerp(p[0], tu, k), lerp(p[1], td, k));
   });
   wrs.filter(w => w !== carrier).forEach(w => { const p = cutAt(w, Math.min(tC + .3, T)); K(w, T, lerp(p[0], end[0], .3), lerp(p[1], end[1], .3)); });
   if (res.fumble) P.fumble = true;
   return finishPlan(P);
+}
+// Pass rush on passes that are not sacks: the D-Line gets into the pocket and chases the QB.
+// How close they get depends on D-Line vs O-Line ratings (a 100 D-Line is right on him as he throws).
+function passPressure() {
+  const O = G.poss, D = other(O);
+  return clamp(0.35 + (effRating(D, 'D-Line') - effRating(O, 'O-Line')) / 30, 0.1, 0.95);
+}
+function passRush(qb, depth, tThrow, incomplete) {
+  const p = passPressure();
+  const dl = role('DL').slice().sort((a, b) => Math.abs(a.d0 - .5) - Math.abs(b.d0 - .5));
+  dl.forEach((a, i) => {
+    cutAt(a, SNAP + .5);
+    const inside = i < 2, gap = lerp(inside ? 3.2 : 4.5, inside ? 0.8 : 1.6, p);
+    const dT = lerp(a.d0, .5 + (a.d0 - .5) * .35, 0.4 + 0.5 * p);
+    K(a, tThrow, -depth + gap, dT);
+    // keep chasing after the throw; the closest rusher gets to the QB on an incompletion
+    K(a, tThrow + .45, -depth + (i === 0 && incomplete && p > .5 ? 0.7 : gap * lerp(.85, .4, p)), lerp(dT, .5, .5));
+  });
 }
 function evalLast(a) { return a.keys[a.keys.length - 1][0]; }
 function finishPlan(P) {

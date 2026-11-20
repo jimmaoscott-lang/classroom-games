@@ -1,5 +1,5 @@
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.5.0 computer coach';
+var INDEX_VERSION = '0.5.1 pass rush';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
