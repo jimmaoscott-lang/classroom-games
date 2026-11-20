@@ -1,4 +1,4 @@
-// Huddle Up: game flow (build step 3). Pelicans = the student coach; Comets = computer coach.
+// Huddle Up: game flow (build step 4). Pelicans = the student coach; Comets = computer coach.
 
 function newGame() {
   const ratings = {};
@@ -9,7 +9,9 @@ function newGame() {
   G = {
     score: { home: 0, away: 0 }, poss: 'home', ballX: 25, down: 1, toGo: 10, play: 0, points: 0, right: 0, wrong: 0,
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
-    accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked },
+    accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
+    streak: 0, wrongRun: [], flags: 0, lockUntil: 0, log: [], cpuPoints: 0, injuries: 0, spent: 0,
+    brk: { poss: 'home', score: 0 },
   };
   G.defCall = null; setFormation();
   G.camX = camTarget(G.ballX, dir());
@@ -91,38 +93,85 @@ function openHuddle(attempt, side) {
   $('#fb').textContent = ''; $('#fb').className = ''; $('#hNext').style.display = 'none';
   $('#hSpeak').style.display = G.accom.readAloud ? '' : 'none';
   $('#huddle').classList.add('show');
-  if (G.accom.readAloud) readQuestion();
+  G.clockStart = performance.now();
+  if (G.accom.readAloud) { readQuestion(); G.clockStart += 1000 * questionWords() / 2.6; } // reading time starts after read-aloud
 }
+// Guessing check (Studio 68 rule): faster than 1 s + 0.25 s per word of question and choices.
+const countWords = t => String(t).trim().split(/\s+/).filter(Boolean).length;
+const questionWords = () => G.q.choices.reduce((n, c) => n + countWords(c.text), countWords(G.q.src.q));
+const minReadSeconds = () => (1 + 0.25 * questionWords()) * (G.accom.extended ? EXTENDED_TIME : 1);
+function accomText() { const a = []; if (G.accom.readAloud) a.push('Read aloud'); if (G.accom.extended) a.push('Extended time'); if (G.accom.reduced) a.push('Reduced choices'); return a.join(', '); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function readQuestion() { speak(G.q.src.q + '. ' + G.q.choices.map((c, i) => 'ABCD'[i] + '. ' + c.text).join('. ')); }
 function speak(text) { try { if (!window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; speechSynthesis.speak(u); } catch (e) { } }
 function stopSpeech() { try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) { } }
 
 function answer(i) {
-  if (G.answered) return; G.answered = true;
+  if (G.answered || performance.now() < G.lockUntil) return; G.answered = true;
   const c = G.q.choices[i], off = G.hSide === 'offense';
+  const fast = (performance.now() - G.clockStart) / 1000 < minReadSeconds();
+  // One log row per answer (saved to the Results tab once the Sheet is connected in step 9).
+  const entry = { time: Date.now(), question: G.q.src.q, teks: G.q.src.teks || '', result: c.right ? 'Right' : 'Wrong', accom: accomText(), guess: false,
+    event: (off ? 'Offense huddle' : 'Defense huddle') + (G.attempt === 2 ? ' · second chance' : '') };
+  G.log.push(entry);
   $$('.choice').forEach((b, j) => { b.disabled = true; if (G.q.choices[j].right) b.classList.add('right'); });
   if (!c.right) $$('.choice')[i].classList.add('wrong');
   const fb = $('#fb'), next = $('#hNext');
+  let extra = '';
   if (c.right) {
-    G.right++;
+    G.right++; G.streak = 0; G.wrongRun = [];
     const pts = G.attempt === 1 ? 2 : 1; G.points += pts; popPoints(pts);
     G.userQ = G.attempt === 1 ? 'clean' : 'shaky';
     fb.className = 'good';
     fb.textContent = G.attempt === 1 ? `Correct! Clean ${off ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
     next.textContent = 'Snap the ball'; next.onclick = snap;
-  } else if (G.attempt === 1) {
-    G.wrong++;
-    fb.className = 'bad'; fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(off) + ' Answer one more to clear it up.';
-    next.textContent = 'Second chance question'; next.onclick = () => openHuddle(2);
   } else {
-    G.wrong++; fb.className = 'bad';
-    if (off) { fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = delayOfGame; }
+    G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: i, entry });
+    fb.className = 'bad';
+    if (G.attempt === 1) {
+      fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(off) + ' Answer one more to clear it up.';
+      next.textContent = 'Second chance question'; next.onclick = () => openHuddle(2);
+    } else if (off) { fb.textContent = 'Not quite. Flag on the play: delay of game, 5 yards. Replay the down.'; next.textContent = 'Back to the line'; next.onclick = delayOfGame; }
     else { G.userQ = 'blown'; fb.textContent = 'Not quite. Missed assignment! Your defense is out of position, so a big play is more likely.'; next.textContent = 'Snap the ball'; next.onclick = snap; }
+    if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(); }
+    const g = checkGuessing(); if (g) extra += ' ' + g;
+    fb.textContent += extra;
   }
   if (G.accom.readAloud) speak((c.right ? 'Correct. ' : 'Not quite. The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.)\s*/, ''));
   updateHud();
   next.style.display = 'block';
+}
+// 3 wrong answers in a row: a random Pelicans player is shaken up and plays at his starting rating for 3 plays.
+function injurePlayer() {
+  const healthy = POS.filter(p => !G.ratings.home[p].hurt);
+  const pool = healthy.filter(p => G.ratings.home[p].now > G.ratings.home[p].start);
+  const p = pick(pool.length ? pool : healthy.length ? healthy : POS), r = G.ratings.home[p];
+  r.hurt = INJURY_PLAYS; G.injuries++;
+  return `Three misses in a row: your ${p} is shaken up and plays at his starting rating (${r.start}) for the next ${INJURY_PLAYS} plays.`;
+}
+// Called once per play (snap, flag, or punt): count down shaken-up players.
+function tickInjuries() {
+  const back = [];
+  for (const p of POS) { const r = G.ratings.home[p]; if (r.hurt > 0 && --r.hurt === 0) back.push(p); }
+  return back.length ? ` · ${back.join(' and ')} back to full strength` : '';
+}
+// Guess flag: 3 wrong in a row that were each too fast to read, or 3 wrong in a row in the same position.
+function checkGuessing() {
+  const run = G.wrongRun; if (run.length < 3) return '';
+  const last = run.slice(-3);
+  if (!last.every(w => w.fast) && !last.every(w => w.pos === last[0].pos)) return '';
+  last.forEach(w => w.entry.guess = true);
+  G.wrongRun = []; G.flags++;
+  const secs = G.flags === 1 ? 5 : 10;
+  lockFor(secs, 'The ref is reviewing your answers. Slow down and read each question before you pick.');
+  return 'Slow down and read each question.';
+}
+function lockFor(secs, msg) {
+  G.lockUntil = performance.now() + secs * 1000;
+  $('#lockMsg').textContent = msg; $('#lock').classList.add('on');
+  if (G.accom.readAloud) setTimeout(() => speak(msg), 50);
+  const tick = () => { const left = Math.ceil((G.lockUntil - performance.now()) / 1000); if (left <= 0 || !G.lockUntil) { $('#lock').classList.remove('on'); return; } $('#lockSecs').textContent = left; setTimeout(tick, 200); };
+  tick();
 }
 // First miss: ONE random penalty from the options that can actually happen right now.
 function firstMissPenalty(off) {
@@ -152,10 +201,11 @@ function delayOfGame() {
   const back = Math.min(5, Math.floor(ownYards()) / 2);
   const s = dir();
   G.ballX -= s * back; G.toGo += back; G.play++;
+  const healed = tickInjuries();
   G.flag = { x: G.ballX + s * (back - 1), d: .45 };
   G.defCall = null; setFormation();
-  banner('Flag · Delay of game', `5-yard penalty · Replay ${ord(G.down)} down` + quarterNote(), 'flag');
-  G.mode = 'result'; updateHud();
+  banner('Flag · Delay of game', `5-yard penalty · Replay ${ord(G.down)} down` + healed + quarterNote(), 'flag');
+  G.mode = 'result'; updateHud(); $('#label').textContent = 'Result';
   showNext(nextLabel(), afterResult);
 }
 function snap() {
@@ -172,9 +222,10 @@ function punt() {
   const dist = clamp(Math.round(40 + gauss() * 6), 28, 55);
   let big;
   G.play++; G.goForIt = false;
+  const healed = tickInjuries();
   if (dist >= toGoal) { changePoss(R, ownSpot(R, 20)); big = `${TEAMS[K].short} punt · Touchback`; }
   else { const ret = irnd(0, 10); changePoss(R, G.ballX + s * (dist - ret)); big = `${TEAMS[K].short} punt · ${dist} yards`; }
-  const small = `${TEAMS[R].short} ball on ${spot(G.ballX)} · The punt team comes in step 8` + quarterNote();
+  const small = `${TEAMS[R].short} ball on ${spot(G.ballX)} · The punt team comes in step 8` + healed + quarterNote();
   G.defCall = null; setFormation();
   banner(big, small, 'flag');
   G.mode = 'result'; updateHud();
@@ -183,6 +234,7 @@ function punt() {
 function finishPlay() {
   const r = G.res, s = dir(), O = G.poss, D = other(O), userOff = O === 'home', dN = TEAMS[D].short;
   G.play++; G.goForIt = false;
+  const healed = tickInjuries();
   let big = '', cls = '';
   const small = [];
   const gainTxt = y => y > 0 ? `${y} yard${y === 1 ? '' : 's'}` : y === 0 ? 'no gain' : `loss of ${-y}`;
@@ -218,7 +270,7 @@ function finishPlay() {
   if (G.cpuQ === 'shaky') small.push('Comets missed their huddle');
   if (G.userQ === 'shaky') small.push('Your second-chance huddle slowed you down');
   if (G.userQ === 'blown') small.push('Missed assignment on your defense');
-  banner(big, small.join(' · ') + quarterNote(), cls);
+  banner(big, small.join(' · ') + healed + quarterNote(), cls);
   G.mode = 'result'; G.resetCam = true; updateHud();
   $('#label').textContent = 'Result';
   showNext(nextLabel(), afterResult);
@@ -228,23 +280,94 @@ const nextLabel = () => G.play >= PLAYS_PER_GAME ? 'See final score' : G.play ==
 function afterResult() {
   G.flag = null; G.resetCam = false; G.defCall = null;
   if (G.play >= PLAYS_PER_GAME) return showFinal();
-  if (G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone) {
+  // Breaks come after a score, a change of possession, and the end of each quarter.
+  const total = G.score.home + G.score.away;
+  const why = [];
+  if (total !== G.brk.score) why.push('score');
+  if (G.poss !== G.brk.poss) why.push('poss');
+  if (G.play % PLAYS_PER_QUARTER === 0) why.push('quarter');
+  const half = G.play === PLAYS_PER_GAME / 2 && !G.halftimeDone;
+  let resume = () => { setFormation(); showCalls(); };
+  if (half) {
     G.halftimeDone = true; G.goForIt = false;
     changePoss('away', ownSpot('away', 25)); setFormation(); updateHud();
-    banner('Halftime', 'Comets get the ball to start the 2nd half · Skill point breaks come in step 4', '');
-    G.mode = 'result';
-    return showNext('Start the 2nd half', () => { setFormation(); showCalls(); });
+    resume = () => { setFormation(); showCalls(); banner('2nd half', 'Comets get the ball to start the 2nd half', ''); };
   }
-  setFormation(); showCalls();
+  G.brk = { poss: G.poss, score: total };
+  if (!why.length) return resume();
+  const cpuNote = cpuBreak();
+  // Quarter breaks always show the roster. Other breaks show it only when there are points to spend.
+  if (why.includes('quarter') || G.points > 0) return openBreak(why, half, cpuNote, resume);
+  resume();
+}
+
+// ---------- breaks: spend skill points ----------
+// Solo mode: the computer gets a set number of points each break (by difficulty) and spends them on its weakest players.
+function cpuBreak() {
+  G.cpuPoints += CPU_BREAK_POINTS;
+  const ups = {};
+  while (G.cpuPoints > 0) {
+    const open = POS.filter(p => G.ratings.away[p].now < RATING_CAP); if (!open.length) break;
+    const low = Math.min(...open.map(p => G.ratings.away[p].now));
+    const p = pick(open.filter(q => G.ratings.away[q].now === low)), r = G.ratings.away[p];
+    r.now = Math.min(RATING_CAP, r.now + RATING_PER_POINT); G.cpuPoints--;
+    ups[p] = (ups[p] || 0) + RATING_PER_POINT;
+  }
+  const list = Object.keys(ups).map(p => `${p} +${ups[p]}`);
+  return list.length ? `Comets coach spent ${CPU_BREAK_POINTS} skill points: ${list.join(', ')}.` : '';
+}
+function openBreak(why, half, cpuNote, resume) {
+  G.mode = 'break'; G.breakResume = resume; G.sel = G.sel || null;
+  const q = Math.floor((G.play - 1) / PLAYS_PER_QUARTER) + 1;
+  $('#bkTitle').textContent = half ? 'Halftime' : why.includes('quarter') ? `End of Quarter ${q}` : why.includes('score') ? 'Break · Score' : 'Break · Change of possession';
+  $('#bkWhy').textContent = `Pelicans ${G.score.home}, Comets ${G.score.away}`;
+  $('#bkCpu').textContent = cpuNote;
+  renderBreak();
+  $('#break').classList.add('show');
+  if (G.accom.readAloud) speak(`${$('#bkTitle').textContent}. You have ${G.points} skill point${G.points === 1 ? '' : 's'} to spend. Tap a player, then tap plus 1.`);
+}
+function renderBreak() {
+  const R = G.ratings.home;
+  $('#bkPts').textContent = `Skill points: ${G.points}`;
+  $('#roster').innerHTML = POS.map(p => {
+    const r = R[p];
+    return `<button class="pcard${G.sel === p ? ' sel' : ''}" data-p="${p}"><div class="pn">${p}</div><div class="pi">${POS_INFO[p]}</div><div class="pr">${r.now}</div>` +
+      `<div class="bar"><i style="width:${r.now}%"></i></div>` +
+      (r.hurt ? `<div class="hurt"><span class="cross"></span>Shaken up · plays at ${r.start} for ${r.hurt} more play${r.hurt > 1 ? 's' : ''}</div>` : `<div class="ps">Started at ${r.start}</div>`) + `</button>`;
+  }).join('');
+  $$('.pcard').forEach(b => b.onclick = () => { G.sel = b.dataset.p; renderBreak(); });
+  const btn = $('#plusBtn'), help = $('#bkHelp');
+  if (!G.sel) { btn.disabled = true; btn.textContent = '+1'; }
+  else {
+    const r = R[G.sel], to = Math.min(RATING_CAP, r.now + RATING_PER_POINT);
+    btn.textContent = r.now >= RATING_CAP ? `${G.sel} is maxed out` : `+1 ${G.sel} (${r.now} to ${to})`;
+    btn.disabled = G.points < 1 || r.now >= RATING_CAP;
+  }
+  help.textContent = G.points < 1 ? 'No skill points left. Answer huddle questions to earn more (+2 first try, +1 second chance).'
+    : `Tap a player, then tap +1. Each +1 adds ${RATING_PER_POINT} rating point${RATING_PER_POINT > 1 ? 's' : ''}. Unspent points carry over to the next break.`;
+}
+function spendPoint() {
+  if (G.mode !== 'break' || !G.sel || G.points < 1) return;
+  const r = G.ratings.home[G.sel]; if (r.now >= RATING_CAP) return;
+  r.now = Math.min(RATING_CAP, r.now + RATING_PER_POINT); G.points--; G.spent++;
+  updateHud(); renderBreak();
+}
+function closeBreak() {
+  if (G.mode !== 'break') return;
+  $('#break').classList.remove('show'); stopSpeech();
+  const f = G.breakResume; G.breakResume = null; f();
 }
 function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b2').textContent = b2 || ''; $('#b2').style.display = b2 ? '' : 'none'; const b = $('#banner'); b.className = ''; void b.offsetWidth; b.className = 'show ' + (cls || ''); }
 function hideBanner() { $('#banner').className = ''; }
 function showFinal() {
   G.mode = 'final';
   $('#fHome').textContent = G.score.home; $('#fAway').textContent = G.score.away;
-  const n = G.right + G.wrong, h = G.score.home, a = G.score.away;
+  const h = G.score.home, a = G.score.away;
   $('#fWin').textContent = h > a ? 'Pelicans win!' : h < a ? 'Comets win' : 'Tie game';
-  $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${n ? ` (${Math.round(100 * G.right / n)}%)` : ''}<br>Skill points saved: <b>${G.points}</b> (spending them on players comes in step 4)`;
+  const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length, flagged = G.log.length - scored.length;
+  $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
+    (flagged ? `<br>Guess-flagged answers (left out of % correct): <b>${flagged}</b>` : '') +
+    `<br>Skill points spent: <b>${G.spent}</b> · unspent: <b>${G.points}</b>${G.injuries ? ` · players shaken up: <b>${G.injuries}</b>` : ''}`;
   $('#final').classList.add('show');
 }
 const ord = n => ['1st', '2nd', '3rd', '4th'][n - 1] || n + 'th';
@@ -258,6 +381,9 @@ function updateHud() {
   const p = Math.min(G.play, PLAYS_PER_GAME - 1);
   $('#sub').textContent = `${TEAMS[G.poss].short} ball · Quarter ${Math.floor(p / PLAYS_PER_QUARTER) + 1} · Play ${p % PLAYS_PER_QUARTER + 1} of ${PLAYS_PER_QUARTER}`;
   $('#chip').textContent = `Skill points: ${G.points}`;
+  const hurt = POS.filter(p => G.ratings.home[p].hurt > 0);
+  $('#trainer').classList.toggle('show', hurt.length > 0);
+  $('#trainerTxt').textContent = hurt.map(p => `${p} shaken up · ${G.ratings.home[p].hurt} play${G.ratings.home[p].hurt > 1 ? 's' : ''}`).join(' · ');
 }
 
 // ---------- main loop ----------
@@ -281,12 +407,14 @@ function frame(now) {
 // ---------- screen fit, buttons, start ----------
 function fit() { const s = Math.min(innerWidth / 1280, innerHeight / 720); $('#stage').style.transform = `scale(${s})`; }
 addEventListener('resize', fit); fit();
-$('#optRA').checked = QS.get('ra') === '1'; $('#optRC').checked = QS.get('rc') === '1';
-$('#ver').textContent = 'Build ' + INDEX_VERSION;
+$('#optRA').checked = QS.get('ra') === '1'; $('#optRC').checked = QS.get('rc') === '1'; $('#optET').checked = QS.get('et') === '1';
+$('#ver').textContent = 'Build ' + INDEX_VERSION + ' · Computer: ' + DIFF + ' · +1 = ' + RATING_PER_POINT + ' rating';
 $('#kick').onclick = () => { $('#title').classList.remove('show'); newGame(); };
 $('#again').onclick = () => { $('#final').classList.remove('show'); newGame(); };
-$$('[data-exit]').forEach(b => b.onclick = () => { stopSpeech(); closeHuddle(); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
+$$('[data-exit]').forEach(b => b.onclick = () => { stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
 $('#hSpeak').onclick = readQuestion;
+$('#plusBtn').onclick = spendPoint;
+$('#bkDone').onclick = closeBreak;
 addEventListener('keydown', e => {
   if (G && G.mode === 'huddle' && !G.answered) { const k = 'abcd'.indexOf(e.key.toLowerCase()); const n = '1234'.indexOf(e.key); const i = k >= 0 ? k : n; if (i >= 0 && i < G.q.choices.length) answer(i); }
 });

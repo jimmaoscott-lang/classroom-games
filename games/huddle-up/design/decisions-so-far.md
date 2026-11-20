@@ -41,3 +41,11 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
   - Defense huddle: second miss = missed assignment (blown), play still runs with big-play risk.
   - 4th down: Go For It / Punt (automatic net ~40) / Field Goal (step 8). Kickoffs are automatic touchbacks at the 25; extra points automatic; halftime gives the Comets the ball.
   - tests/balance-test.js confirms an offense that answers right with ratings 62 out-gains one that misses with ratings 80, for every play.
+- Step 4 (huddle penalties, injuries, skill-point breaks): built 11/20/2026. Build 0.4.0.
+  - Injuries: 3 wrong answers in a row (second chances count) shake up one random Pelicans player, picked first from players who have bought rating points so the injury matters. He plays at his starting rating for 3 plays, counting the current one. Trainer icon (red cross) shows over him on the field and in the panel, and on his break card. Right answer resets the streak.
+  - Breaks after a score, a change of possession, and each quarter end (halftime too). Quarter breaks always show the roster; score and possession breaks show it only when the student has points to spend. Tap a player, tap +1 (+2 rating, cap 100). Unspent points carry over.
+  - Computer team gets points at every break, spent on its lowest-rated players: Easy 2, Normal 4, Hard 5, Expert 6. Test with `?diff=Easy` etc. `?rpp=1|2|3` tests the rating-per-point setting.
+  - Guess flags: Studio 68 rule. Reading clock starts after read-aloud finishes. Flag shows a "Ref review" lock screen: 5 s the first time, 10 s after that. Flagged answers are left out of % correct on the final screen.
+  - Every answer is logged in the page (time, question, TEKS, Right/Wrong, accommodations, guess flag, event tag) for the Results tab in step 9.
+  - Test option added: Extended time (`?et=1`).
+  - Tests: tests/step4-test.js checks injuries, countdown, trainer chip, guess lock, break spending, cap, computer points, rating floor, halftime.

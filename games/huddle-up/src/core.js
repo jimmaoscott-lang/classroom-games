@@ -1,5 +1,5 @@
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.3.0 all plays';
+var INDEX_VERSION = '0.4.0 skill points';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -14,7 +14,15 @@ function wpick(pairs) { let n = pairs.reduce((s, p) => s + p[1], 0) * Math.rando
 
 const QUARTERS = 4, PLAYS_PER_QUARTER = 6; // Quick game for testing (teacher setting comes later)
 const PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
-const CPU_MISS = 0.25; // Normal: computer misses its huddle 25% of the time
+// Teacher settings (the gear menu comes later). Test overrides: ?diff=Easy|Normal|Hard|Expert, ?rpp=1|2|3
+const DIFFS = { Easy: { miss: 0.40, brk: 2 }, Normal: { miss: 0.25, brk: 4 }, Hard: { miss: 0.10, brk: 5 }, Expert: { miss: 0, brk: 6 } };
+const DIFF = DIFFS[QS.get('diff')] ? QS.get('diff') : 'Normal';
+const CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses its huddle
+const CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
+const RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
+const RATING_CAP = 100;
+const INJURY_STREAK = 3, INJURY_PLAYS = 3; // 3 wrong in a row = a player is shaken up for 3 plays
+const EXTENDED_TIME = 1.5;                // guessing speed check is 1.5x longer with extended time
 const OFF_CALLS = ['Run Inside', 'Run Outside', 'Short Pass', 'Deep Pass', 'Play Action'];
 const DEF_CALLS = ['Blitz', 'Zone', 'Man Coverage', 'Stack the Box'];
 // Matchup chart from the design plan. G = favors offense, B = favors defense, E = even, R = risky (sack or big play).
@@ -45,6 +53,9 @@ const NUMS = {
   away: { off: { OL: [60, 62, 65, 68, 71], TE: [86], WR: [80, 81, 3], QB: [12], RB: [28] }, def: { DL: [90, 94, 97, 99], LB: [50, 55, 58], CB: [21, 24], S: [30, 33] } },
 };
 const POS = ['QB', 'RB', 'WR', 'O-Line', 'D-Line', 'Linebacker', 'Secondary', 'Kicker'];
+const POS_INFO = { 'QB': 'Pass accuracy', 'RB': 'Breaking tackles', 'WR': 'Catching, getting open', 'O-Line': 'Blocking', 'D-Line': 'Pass rush, run stopping', 'Linebacker': 'Tackling, run defense', 'Secondary': 'Coverage, interceptions', 'Kicker': 'Distance, accuracy' };
+// Which player on the field wears the trainer icon when a position is shaken up.
+const POS_ROLE = { 'QB': ['QB', 0], 'RB': ['RB', 0], 'WR': ['WR', 0], 'O-Line': ['C', 0], 'D-Line': ['DL', 1], 'Linebacker': ['LB', 1], 'Secondary': ['S', 0] };
 
 let G = null;
 const QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean) }));

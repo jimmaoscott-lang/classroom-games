@@ -95,12 +95,25 @@ function drawBallShape(x, y, s) {
   ctx.beginPath(); ctx.ellipse(0, 0, 9, 5.5, 0, 0, 7); ctx.fillStyle = '#8B4A1C'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#3A1D0A'; ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.fillRect(-4, -1, 8, 2); ctx.restore();
 }
+// Red-cross trainer icon over a Pelicans player who is shaken up.
+function drawTrainerIcons() {
+  for (const p of POS) {
+    const r = G.ratings.home[p]; if (!r.hurt || !POS_ROLE[p]) continue;
+    const [rl, i] = POS_ROLE[p];
+    const a = G.actors.filter(x => x.team === 'home' && x.role === rl)[i]; if (!a) continue;
+    const [sx, sy] = proj(a.x, a.d), sc = 0.7 + 0.5 * a.d, y = sy - 82 * sc;
+    if (sx < -30 || sx > 1310) continue;
+    ctx.beginPath(); ctx.arc(sx, y, 11, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#B91C1C'; ctx.stroke();
+    ctx.fillStyle = '#DC2626'; ctx.fillRect(sx - 2.5, y - 7, 5, 14); ctx.fillRect(sx - 7, y - 2.5, 14, 5);
+  }
+}
 function draw() {
   drawField();
   const items = G.actors.map(a => ({ d: a.d, f: () => drawPlayer(a) }));
   const b = G.ball;
   if (!b.carrier) items.push({ d: b.d + 0.001, f: () => { const [x, y] = proj(b.x, b.d); const sc = 0.7 + 0.5 * b.d; drawBallShape(x, y - b.h * sc, sc); } });
   items.sort((p, q) => p.d - q.d).forEach(i => i.f());
+  drawTrainerIcons();
   if (G.flag) { const [x, y] = proj(G.flag.x, G.flag.d); ctx.fillStyle = '#FACC15'; ctx.beginPath(); ctx.ellipse(x, y - 2, 9, 4, 0, 0, 7); ctx.fill(); }
 }
 

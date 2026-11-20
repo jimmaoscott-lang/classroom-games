@@ -26,7 +26,7 @@ button{font-family:inherit;cursor:pointer}
 #fieldBox{position:absolute;left:0;top:90px;width:1280px;height:450px;overflow:hidden}
 #field{position:absolute;left:0;top:0}
 #banner{position:absolute;left:50%;top:62px;transform:translateX(-50%);min-width:520px;max-width:900px;display:none;text-align:center;z-index:4}
-#banner .b1{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:54px;letter-spacing:1px;color:#0B1526;background:#FACC15;padding:4px 30px;border-radius:6px 6px 0 0;text-transform:uppercase}
+#banner .b1{white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:54px;letter-spacing:1px;color:#0B1526;background:#FACC15;padding:4px 30px;border-radius:6px 6px 0 0;text-transform:uppercase}
 #banner .b2{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:#fff;background:#0B1526;padding:8px 20px;border-radius:0 0 6px 6px;border:1px solid #2A3B57;border-top:none}
 #banner.flag .b1{background:#F59E0B}
 #banner.td .b1{background:#22C55E;color:#fff}
@@ -68,6 +68,41 @@ button{font-family:inherit;cursor:pointer}
 #fb.good{color:#86EFAC}#fb.bad{color:#FCA5A5}
 .hfoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
 #hNext{display:none;min-width:280px;flex:0 0 auto}
+/* trainer chip */
+#trainer{display:none;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#FECACA;background:#3A1218;border:1px solid #7F1D1D;border-radius:6px;padding:5px 12px;margin-left:auto;margin-right:12px}
+#trainer.show{display:flex}
+.cross{display:inline-block;width:18px;height:18px;border-radius:50%;background:#fff;position:relative;flex:none}
+.cross:before,.cross:after{content:'';position:absolute;background:#DC2626;left:7px;top:3px;width:4px;height:12px}
+.cross:after{left:3px;top:7px;width:12px;height:4px}
+/* break */
+#break{position:absolute;left:0;top:90px;width:1280px;height:630px;background:rgba(5,11,22,.92);display:none;align-items:center;justify-content:center;z-index:8}
+#break.show{display:flex}
+#break .card{width:1120px;padding:18px 26px 16px}
+#bkTitle{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:30px;letter-spacing:1px;text-transform:uppercase;color:#FACC15}
+#bkWhy{font-size:14px;color:#A9B6CA;margin-left:12px}
+#bkPts{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:#0B1526;background:#FACC15;border-radius:6px;padding:6px 16px}
+#roster{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 12px}
+.pcard{position:relative;text-align:left;background:#14233D;color:#E6ECF5;border:2px solid #2A3B57;border-radius:8px;padding:10px 12px 12px;min-height:118px}
+.pcard:hover{border-color:#6B7C96}
+.pcard.sel{border-color:#FACC15;background:#1B2E4F}
+.pcard .pn{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;letter-spacing:.5px}
+.pcard .pi{font-size:12px;color:#A9B6CA}
+.pcard .pr{position:absolute;right:12px;top:6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:44px;color:#fff}
+.pcard .bar{height:8px;background:#0B1526;border-radius:4px;margin-top:12px;overflow:hidden}
+.pcard .bar i{display:block;height:100%;background:#FACC15}
+.pcard .ps{font-size:12px;color:#6B7C96;margin-top:6px}
+.pcard .hurt{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#FCA5A5;margin-top:6px}
+.pcard .cross{width:15px;height:15px}.pcard .cross:before{left:5.5px;top:2.5px;width:4px;height:10px}.pcard .cross:after{left:2.5px;top:5.5px;width:10px;height:4px}
+.bkrow{display:flex;gap:16px;align-items:center}
+#plusBtn{flex:0 0 360px;height:58px}
+#plusBtn:disabled{background:#1E2A40;color:#5D6E88;cursor:not-allowed}
+#bkHelp{font-size:14px;color:#A9B6CA;line-height:1.4}
+#bkCpu{font-size:13px;color:#8FA0B8;margin-top:10px;min-height:18px}
+/* guessing lock */
+#lock{position:absolute;inset:0;background:rgba(5,11,22,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:12;text-align:center}
+#lock.on{display:flex}
+#lockMsg{font-size:24px;font-weight:600;max-width:760px;line-height:1.4}
+#lockSecs{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:80px;color:#FACC15}
 /* pop */
 #pop{position:absolute;left:0;right:0;text-align:center;top:118px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:34px;color:#FACC15;text-shadow:0 2px 0 #0B1526;opacity:0;pointer-events:none;z-index:9}
 #pop.show{animation:pop 1.6s ease-out}
@@ -96,7 +131,7 @@ button{font-family:inherit;cursor:pointer}
   <div id="banner"><div class="b1" id="b1"></div><div class="b2" id="b2"></div></div>
  </div>
  <div id="panel">
-  <div class="row"><div id="label">Coach Pelicans · Offense · Call the play</div><div id="chip">Skill points: 0</div></div>
+  <div class="row"><div id="label">Coach Pelicans · Offense · Call the play</div><div id="trainer"><span class="cross"></span><span id="trainerTxt"></span></div><div id="chip">Skill points: 0</div></div>
   <div id="calls"></div>
   <div class="row"><div id="hint" style="font-size:13px;color:#6B7C96"></div><button class="exit" data-exit>Exit / Start Over</button></div>
  </div>
@@ -108,12 +143,20 @@ button{font-family:inherit;cursor:pointer}
   <div id="fb"></div>
   <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="hNext">Snap the ball</button></div>
  </div></div>
+ <div id="break"><div class="card">
+  <div class="hhead"><div><span id="bkTitle">Break</span><span id="bkWhy"></span></div><div id="bkPts">Skill points: 0</div></div>
+  <div id="roster"></div>
+  <div class="bkrow"><button class="go" id="plusBtn">+1</button><div id="bkHelp"></div></div>
+  <div id="bkCpu"></div>
+  <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="bkDone" style="flex:0 0 300px">Back to the game</button></div>
+ </div></div>
+ <div id="lock"><div class="proto">Ref review</div><div id="lockMsg"></div><div id="lockSecs"></div></div>
  <div class="screen show" id="title">
-  <div class="proto">Test build · Step 3</div>
+  <div class="proto">Test build · Step 4</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
-  <div class="blurb">Quick game: 4 quarters, 6 plays each. Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution. Wrong answers mean penalties and mistakes.</div>
-  <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label></div>
+  <div class="blurb">Quick game: 4 quarters, 6 plays each. Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
+  <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
   <button class="go bigbtn" id="kick">Kick Off</button>
   <div class="ver" id="ver"></div>
  </div>
