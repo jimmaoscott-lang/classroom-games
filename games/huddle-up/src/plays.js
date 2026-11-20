@@ -131,7 +131,8 @@ function planPlay(res) {
   // defense phase 1 by call
   for (const a of defense()) {
     if (a.role === 'LB') {
-      if (dc === 'Blitz' && !isRun) K(a, SNAP + 1.0, -3.5, lerp(a.d0, .5, .6));
+      if (dc === 'Blitz' && !isRun) K(a, SNAP + 1.0, -3.5, lerp(a.d0, .5, .6)); // replaced by passRush once the throw time is known
+      else if (dc === 'Blitz') K(a, SNAP + .55, -0.8, lerp(a.d0, .5, .3));      // run blitz: shoot the gaps into the backfield
       else if (dc === 'Zone') K(a, SNAP + 1.0, a.u0 + 4, a.d0);
       else K(a, SNAP + 1.0, a.u0 + 1.5, a.d0);
     }
@@ -263,6 +264,17 @@ function passRush(qb, depth, tThrow, incomplete, res) {
     K(a, tThrow, -depth + gap, dT);
     // keep chasing after the throw; the closest rusher gets to the QB on an incompletion
     K(a, tThrow + .45, -depth + (i === 0 && incomplete && p > .5 ? 0.7 : gap * lerp(.85, .4, p)), lerp(dT, .5, .5));
+  });
+  // Blitz: all three linebackers rush. Outside backers come off the edges, the middle one shoots the A gap.
+  // They are extra rushers the line can't block, so they get closer than the D-Line.
+  if (res.defCall === 'Blitz') role('LB').forEach(a => {
+    a.keys = [[0, a.u0, a.d0]];
+    const gapD = a.d0 < .45 ? .31 : a.d0 > .55 ? .69 : .455;
+    const close = lerp(1.8, 0.5, p);
+    K(a, SNAP + .1, a.u0 - .3, a.d0);                              // creep, then go at the snap
+    K(a, SNAP + .55, 0.2, gapD);                                     // through the line
+    K(a, Math.max(tThrow, SNAP + 1.0), -depth + close, lerp(gapD, .5, .65));
+    K(a, Math.max(tThrow, SNAP + 1.0) + .4, -depth + (incomplete ? 0.6 : close * .6), lerp(gapD, .5, .85));
   });
 }
 function evalLast(a) { return a.keys[a.keys.length - 1][0]; }
