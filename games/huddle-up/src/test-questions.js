@@ -1,6 +1,6 @@
 // Test questions for the field prototype. Same columns as a Studio 68 question tab:
 // Question, Correct answer, Wrong answer 1, Wrong answer 2, Wrong answer 3, Wrong answer 4, Resource tag, TEKS
-// (TEKS left blank on purpose: these are placeholders until the Sheet connection in step 9.)
+// Used only outside Apps Script (preview). Inside Apps Script the questions come from the class Sheet.
 var SAMPLE_QUESTIONS = [
   ['What event in October 1929 helped start the Great Depression?', 'The stock market crash', 'The Dust Bowl', 'The Bonus Army march', 'The New Deal', '', 'Prototype test', ''],
   ['What were Hoovervilles?', 'Shantytowns built by homeless people', 'Government housing projects', 'Farm co-ops in the Midwest', 'Factory towns owned by banks', '', 'Prototype test', ''],

@@ -80,3 +80,16 @@ Full design plan: Claude doc "Huddle Up: Design Plan" (https://claude.ai/artifac
   - Computer coach: on 4th down, when not going for it, tries a field goal if the make chance is about 45% or better (fgDistance <= 51 at kicker 65), otherwise punts. Same huddle miss rates as plays.
   - Head-to-Head: kicks sync the same way as plays (seeded by an event counter G.seq that counts plays and kicks). 4th down message now carries go, punt or fg.
   - Tests: tests/step7-test.js (kick math, animations for every outcome both directions, kickoff/PAT/FG/punt/safety/halftime flow, reduced choices). Older tests skip the opening kickoff.
+- Step 8 (Google Sheet connection and reports): built 11/21/2026. Build 0.8.0, Code.gs Build 8.
+  - apps-script/Code.gs is the full version, built from Studio 68's: serves the page (doGet adds `SERVER_TEST` so only the ?test=1 link shows the test options), Roster sign-in, period sign-up, backup codes, Sets, question tabs, Results, Games, Settings, Goals, reports, Head-to-Head. Dropped: Saves, Radio, Song Plays, Difficulty column.
+  - Menu "Huddle Up": Set up tabs, Update reports, Make student report, Make backup codes, Check game version.
+  - Settings tab rows: Teacher PIN (blank until the teacher types one), Game length (Quick / Standard / Full Period / 3 to 25 plays a quarter), Computer difficulty, Rating per skill point, Play clock (Off/15/20/30), Read aloud for everyone, Report start and end dates. The page never receives the PIN.
+  - Gear icon on the title screen: PIN, then the settings form; saves to the Settings tab and applies right away.
+  - Flow: Loading > sign-in (period or backup code when needed) > title (shows name and period) > Solo or Head-to-Head > pick a set (skipped with one open set) > game. Join a Game uses the set, game length and +1 value of the coach who made the game.
+  - Accommodations from Roster checkboxes. "Read aloud for everyone" reads questions for all but is not logged as an accommodation.
+  - Play clock decision (made in this build, can change): running out counts as a missed answer (first miss penalty, second chance, logged Wrong with "play clock ran out"). Extended time doubles it. Hidden when Off.
+  - Results: one row per answer, sent in small batches (last 2 held back in case they get guess-flagged), flushed at the final screen, Exit, and when the tab closes. Event tag adds "· Head-to-Head" in 2-player games.
+  - Games: one row per game. Solo: Player 2 = Computer. Head-to-Head: host = Player 1, guest = Player 2; both computers send it and Code.gs writes only the first (cache key h2h_CODE_logged). Exit / Start Over or the other coach leaving writes Finished? No with the score so far.
+  - Reports: Summary (Games played column replaces Highest difficulty), Progress Report, Class Overview (games count per period), Student Report (GAMES section replaces SONGS).
+  - Final screen: Copy Results button (text for Google Classroom; falls back to a select-and-copy box), "Saved to the class Sheet" note.
+  - Not in this step: team picker (preset teams), still Pelicans vs Comets.

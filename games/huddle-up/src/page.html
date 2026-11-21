@@ -135,6 +135,31 @@ button{font-family:inherit;cursor:pointer}
 .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
 @keyframes dot{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#4A5D7C}
+/* sheet connection (step 8) */
+.testOnly{display:none!important}
+body.test .testOnly{display:flex!important}
+body.test span.testOnly,body.test div.proto.testOnly{display:inline-block!important}
+#who{font-size:15px;color:#C8D3E3;min-height:20px}
+.gear{position:absolute;right:22px;top:18px;width:48px;height:48px;font-size:26px;color:#C8D3E3;background:transparent;border:1px solid #4A5D7C;border-radius:8px}
+.gear:hover{border-color:#FACC15;color:#FACC15}
+.btnGrid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:980px}
+.btnGrid button{min-width:84px;min-height:56px;padding:8px 18px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;color:#fff;background:#1D4ED8;border:none;border-radius:8px}
+.btnGrid button:hover:not(:disabled){background:#2563EB}
+.btnGrid button:disabled{background:#1E2A40;color:#5D6E88}
+#setGrid button{min-width:300px;font-size:22px}
+.msg{min-height:24px;font-size:17px;color:#FCA5A5;max-width:760px}
+.box{background:#0B1526;border:1px solid #2A3B57;border-top:4px solid #FACC15;border-radius:8px;padding:18px 26px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:900px}
+.box h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;letter-spacing:1px;text-transform:uppercase;color:#FACC15}
+.small{font-size:14px;color:#A9B6CA}
+.field{height:52px;font-size:24px;padding:0 14px;background:#14233D;color:#FACC15;border:2px solid #4A5D7C;border-radius:8px;text-align:center;letter-spacing:4px;font-family:'Barlow Condensed',sans-serif;font-weight:800}
+.field:focus{outline:none;border-color:#FACC15}
+.tset{display:grid;grid-template-columns:260px 320px;gap:12px 18px;align-items:center;text-align:left;font-size:17px}
+.tset select,.tset input{font:inherit;font-size:17px;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:6px;padding:6px 8px}
+#hClock{display:none;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:#0B1526;background:#FACC15;border-radius:6px;padding:2px 12px;margin-right:12px;min-width:64px;text-align:center}
+#hClock.low{background:#EF4444;color:#fff}
+#copyBox{width:760px;height:64px;font:14px Inter,sans-serif;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:6px;padding:8px;resize:none;display:none}
+#copyMsg{font-size:15px;color:#86EFAC;min-height:20px}
+#saveNote{font-size:13px;color:#6B7C96;min-height:16px}
 </style></head><body>
 <div id="wrap"><div id="stage">
  <div id="sb">
@@ -152,7 +177,7 @@ button{font-family:inherit;cursor:pointer}
  </div>
  <div id="pop"></div>
  <div id="huddle"><div class="card">
-  <div class="hhead"><div><span id="hTitle">Offense huddle · Run Inside</span><span id="hTry"></span></div><button class="speak" id="hSpeak" title="Read aloud">🔊</button></div>
+  <div class="hhead"><div><span id="hTitle">Offense huddle · Run Inside</span><span id="hTry"></span></div><div style="display:flex;align-items:center"><span id="hClock"></span><button class="speak" id="hSpeak" title="Read aloud">🔊</button></div></div>
   <div id="qText"></div>
   <div id="choices"></div>
   <div id="fb"></div>
@@ -166,15 +191,56 @@ button{font-family:inherit;cursor:pointer}
   <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="bkDone" style="flex:0 0 300px">Back to the game</button></div>
  </div></div>
  <div id="lock"><div class="proto">Ref review</div><div id="lockMsg"></div><div id="lockSecs"></div></div>
- <div class="screen show" id="title">
-  <div class="proto">Test build · Step 7</div>
+ <div class="screen" id="title">
+  <button class="gear" id="gearBtn" title="Teacher settings">⚙</button>
+  <div class="proto testOnly">Test build · Step 8</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="blurb"><span id="lenTxt"></span> Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
-  <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
-  <div class="opts"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
+  <div id="who"></div>
+  <div class="opts testOnly"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
+  <div class="opts testOnly"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
   <div class="modes"><button class="go" id="kick">Solo · Kick Off</button><button class="go alt" id="h2hBtn">Head-to-Head</button><button class="go alt" id="joinOpen">Join a Game</button></div>
   <div class="ver" id="ver"></div>
+ </div>
+ <div class="screen show" id="loading">
+  <div class="logo">HUDDLE <span>UP</span></div>
+  <div class="blurb" id="loadMsg">Opening the stadium...</div>
+ </div>
+ <div class="screen" id="signin">
+  <div class="logo" style="font-size:72px">HUDDLE <span>UP</span></div>
+  <div class="box" id="periodCard"><h2>Which class period are you in?</h2><div class="btnGrid" id="periodGrid"></div><div class="msg" id="periodMsg"></div></div>
+  <div class="box" id="codeCard"><h2>Sign in with your backup code</h2>
+   <div class="small">Use this only if the game does not know who you are. Your teacher has your code.</div>
+   <div style="display:flex;gap:12px"><input class="field" id="codeInput" maxlength="8" autocomplete="off" spellcheck="false" style="width:240px"><button class="go" id="codeBtn" style="flex:0 0 140px">Go</button></div>
+   <div class="msg" id="codeMsg"></div></div>
+  <button class="exit" id="signinRetry">Exit / Start Over</button>
+ </div>
+ <div class="screen" id="sets">
+  <div class="proto" id="setsTitle">Pick a review set</div>
+  <div class="blurb">Your huddle questions come from this set.</div>
+  <div class="btnGrid" id="setGrid"></div>
+  <div class="msg" id="setMsg"></div>
+  <button class="exit" id="setsBack">Exit / Start Over</button>
+ </div>
+ <div class="screen" id="teacher">
+  <div class="proto">Teacher settings</div>
+  <div class="box" id="pinCard"><h2>Teacher PIN</h2><div class="small">The PIN is in the Settings tab of the class Sheet.</div>
+   <div style="display:flex;gap:12px"><input class="field" id="pinInput" type="password" maxlength="12" autocomplete="off" style="width:220px"><button class="go" id="pinBtn" style="flex:0 0 160px">Unlock</button></div>
+   <div class="msg" id="pinMsg"></div></div>
+  <div class="box" id="setCard" style="display:none"><h2>Settings for every student</h2>
+   <div class="tset">
+    <label for="tLen">Game length</label><select id="tLen"><option value="Quick">Quick (~15 min, 6 plays a quarter)</option><option value="Standard">Standard (~30 min, 12 plays)</option><option value="Full Period">Full Period (~45 min, 18 plays)</option><option value="Custom">Custom</option></select>
+    <label for="tPlays" id="tPlaysLbl">Custom: plays a quarter (3 to 25)</label><input id="tPlays" type="number" min="3" max="25" value="8">
+    <label for="tDiff">Computer difficulty (Solo)</label><select id="tDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select>
+    <label for="tRpp">Rating per skill point</label><select id="tRpp"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+    <label for="tClock">Play clock</label><select id="tClock"><option value="0">Off</option><option value="15">15 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select>
+    <label for="tRA">Read aloud for everyone</label><select id="tRA"><option value="No">Off</option><option value="Yes">On</option></select>
+   </div>
+   <div class="small">Saved to the Settings tab. Students get the new settings the next time they open the game.</div>
+   <div style="display:flex;gap:12px"><button class="go" id="tSave" style="flex:0 0 260px">Save settings</button></div>
+   <div class="msg" id="tMsg"></div></div>
+  <button class="exit" id="teacherBack">Exit / Start Over</button>
  </div>
  <div class="screen" id="net">
   <div class="proto" id="netTitle">Head-to-Head</div>
@@ -190,7 +256,8 @@ button{font-family:inherit;cursor:pointer}
   <div class="proto">Final</div><div class="logo" style="font-size:64px" id="fWin"></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span id="fHome" class="score">0</span><span style="color:#A9B6CA">–</span><span id="fAway" class="score">0</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="stats" id="fStats"></div>
-  <button class="go bigbtn" id="again">Play Again</button>
+  <div style="display:flex;gap:16px"><button class="go bigbtn" id="again">Play Again</button><button class="go alt bigbtn" id="copyBtn" style="background:#1D4ED8;color:#fff">Copy Results</button></div>
+  <textarea id="copyBox" readonly></textarea><div id="copyMsg"></div><div id="saveNote"></div>
   <button class="exit" data-exit>Exit / Start Over</button>
  </div>
 </div></div>

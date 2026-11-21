@@ -118,7 +118,7 @@ function netScreen(title, big, msg, opts) {
 function hostGame() {
   netScreen('Head-to-Head', '····', 'Making a game code...', { wait: true });
   G.mode = 'lobby';
-  netCall('h2hCreate', { length: LENGTH, rpp: RATING_PER_POINT }).then(r => {
+  netCall('h2hCreate', { length: LENGTH, ppq: PLAYS_PER_QUARTER, rpp: RATING_PER_POINT, set: APP.set }, playerEmail()).then(r => {
     if (G.mode !== 'lobby') return;
     netStart(r.code, r.seed, 'home');
     $('#netBig').textContent = r.code;
@@ -131,21 +131,26 @@ function joinGame() {
   const code = $('#joinCode').value.toUpperCase().replace(/[^A-Z]/g, '');
   if (code.length !== 4) { $('#netErr').textContent = 'The code has 4 letters.'; return; }
   $('#joinBtn').disabled = true; $('#netErr').textContent = 'Joining...';
-  netCall('h2hJoin', code).then(r => {
-    $('#joinBtn').disabled = false;
-    if (!r || !r.ok) { $('#netErr').textContent = (r && r.msg) || 'Could not join that game.'; return; }
-    applySettings(r.settings && r.settings.length, DIFF);
+  netCall('h2hJoin', code, playerEmail()).then(r => {
+    if (!r || !r.ok) { $('#joinBtn').disabled = false; $('#netErr').textContent = (r && r.msg) || 'Could not join that game.'; return; }
+    const st = r.settings || {};
+    applySettings(LENGTHS[st.length] ? st.length : st.ppq || st.length, DIFF); // the game length and +1 value come from the coach who made the game
+    if ([1, 2, 3].includes(+st.rpp)) RATING_PER_POINT = +st.rpp;
     netStart(code, r.seed, 'away');
-    startNetGame();
+    // Questions come from the set the other coach picked.
+    const set = st.set && st.set.questionTab ? st.set : APP.sets[0] || { name: 'Sample', questionTab: 'Sample Great Depression' };
+    $('#netErr').textContent = 'Loading the questions...';
+    loadSet(set).then(() => { $('#joinBtn').disabled = false; useSet(set); startNetGame(); },
+      err => { $('#joinBtn').disabled = false; netStop(); $('#netErr').textContent = `Could not load the questions: ${err.message || err}`; });
   }, () => { $('#joinBtn').disabled = false; $('#netErr').textContent = 'Could not reach the game. Check the internet connection and try again.'; });
 }
 function startNetGame() {
   $('#net').classList.remove('show'); stopSpeech();
-  newGame({ me: NET.side, net: { code: NET.code, seed: NET.seed } });
+  newGame({ me: NET.side, net: { code: NET.code, seed: NET.seed }, play: true });
   banner('Head-to-Head', `${meN()} vs ${opN()} · ${TEAMS.away.short} kick off to the ${TEAMS.home.short}`, '');
 }
 function otherCoachLeft() {
-  G.mode = 'left'; closeHuddle(); $('#break').classList.remove('show'); netStop();
+  logGameRow(false); G.mode = 'left'; closeHuddle(); $('#break').classList.remove('show'); netStop();
   netScreen('Head-to-Head', '', `The ${opN()} coach left the game. Press Exit / Start Over to play again.`);
 }
 

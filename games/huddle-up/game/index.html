@@ -135,6 +135,31 @@ button{font-family:inherit;cursor:pointer}
 .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
 @keyframes dot{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#4A5D7C}
+/* sheet connection (step 8) */
+.testOnly{display:none!important}
+body.test .testOnly{display:flex!important}
+body.test span.testOnly,body.test div.proto.testOnly{display:inline-block!important}
+#who{font-size:15px;color:#C8D3E3;min-height:20px}
+.gear{position:absolute;right:22px;top:18px;width:48px;height:48px;font-size:26px;color:#C8D3E3;background:transparent;border:1px solid #4A5D7C;border-radius:8px}
+.gear:hover{border-color:#FACC15;color:#FACC15}
+.btnGrid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:980px}
+.btnGrid button{min-width:84px;min-height:56px;padding:8px 18px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;color:#fff;background:#1D4ED8;border:none;border-radius:8px}
+.btnGrid button:hover:not(:disabled){background:#2563EB}
+.btnGrid button:disabled{background:#1E2A40;color:#5D6E88}
+#setGrid button{min-width:300px;font-size:22px}
+.msg{min-height:24px;font-size:17px;color:#FCA5A5;max-width:760px}
+.box{background:#0B1526;border:1px solid #2A3B57;border-top:4px solid #FACC15;border-radius:8px;padding:18px 26px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:900px}
+.box h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;letter-spacing:1px;text-transform:uppercase;color:#FACC15}
+.small{font-size:14px;color:#A9B6CA}
+.field{height:52px;font-size:24px;padding:0 14px;background:#14233D;color:#FACC15;border:2px solid #4A5D7C;border-radius:8px;text-align:center;letter-spacing:4px;font-family:'Barlow Condensed',sans-serif;font-weight:800}
+.field:focus{outline:none;border-color:#FACC15}
+.tset{display:grid;grid-template-columns:260px 320px;gap:12px 18px;align-items:center;text-align:left;font-size:17px}
+.tset select,.tset input{font:inherit;font-size:17px;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:6px;padding:6px 8px}
+#hClock{display:none;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:#0B1526;background:#FACC15;border-radius:6px;padding:2px 12px;margin-right:12px;min-width:64px;text-align:center}
+#hClock.low{background:#EF4444;color:#fff}
+#copyBox{width:760px;height:64px;font:14px Inter,sans-serif;background:#14233D;color:#E6ECF5;border:1px solid #4A5D7C;border-radius:6px;padding:8px;resize:none;display:none}
+#copyMsg{font-size:15px;color:#86EFAC;min-height:20px}
+#saveNote{font-size:13px;color:#6B7C96;min-height:16px}
 </style></head><body>
 <div id="wrap"><div id="stage">
  <div id="sb">
@@ -152,7 +177,7 @@ button{font-family:inherit;cursor:pointer}
  </div>
  <div id="pop"></div>
  <div id="huddle"><div class="card">
-  <div class="hhead"><div><span id="hTitle">Offense huddle · Run Inside</span><span id="hTry"></span></div><button class="speak" id="hSpeak" title="Read aloud">🔊</button></div>
+  <div class="hhead"><div><span id="hTitle">Offense huddle · Run Inside</span><span id="hTry"></span></div><div style="display:flex;align-items:center"><span id="hClock"></span><button class="speak" id="hSpeak" title="Read aloud">🔊</button></div></div>
   <div id="qText"></div>
   <div id="choices"></div>
   <div id="fb"></div>
@@ -166,15 +191,56 @@ button{font-family:inherit;cursor:pointer}
   <div class="hfoot"><button class="exit" data-exit>Exit / Start Over</button><button class="go" id="bkDone" style="flex:0 0 300px">Back to the game</button></div>
  </div></div>
  <div id="lock"><div class="proto">Ref review</div><div id="lockMsg"></div><div id="lockSecs"></div></div>
- <div class="screen show" id="title">
-  <div class="proto">Test build · Step 7</div>
+ <div class="screen" id="title">
+  <button class="gear" id="gearBtn" title="Teacher settings">⚙</button>
+  <div class="proto testOnly">Test build · Step 8</div>
   <div class="logo">HUDDLE <span>UP</span></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span style="color:#A9B6CA">vs</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="blurb"><span id="lenTxt"></span> Coach the Pelicans on offense and defense. Call a play, answer the huddle question, and watch it unfold. Right answers mean clean execution and skill points. Spend points on your players during breaks. Wrong answers mean penalties, and 3 in a row can shake up a player.</div>
-  <div class="opts"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
-  <div class="opts"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
+  <div id="who"></div>
+  <div class="opts testOnly"><span>Test options:</span><label><input type="checkbox" id="optRA"> Read aloud</label><label><input type="checkbox" id="optRC"> Reduced choices</label><label><input type="checkbox" id="optET"> Extended time</label></div>
+  <div class="opts testOnly"><span>Teacher settings (test):</span><label>Game length <select id="optLen"><option>Quick</option><option>Standard</option><option>Full Period</option></select></label><label>Computer <select id="optDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select></label></div>
   <div class="modes"><button class="go" id="kick">Solo · Kick Off</button><button class="go alt" id="h2hBtn">Head-to-Head</button><button class="go alt" id="joinOpen">Join a Game</button></div>
   <div class="ver" id="ver"></div>
+ </div>
+ <div class="screen show" id="loading">
+  <div class="logo">HUDDLE <span>UP</span></div>
+  <div class="blurb" id="loadMsg">Opening the stadium...</div>
+ </div>
+ <div class="screen" id="signin">
+  <div class="logo" style="font-size:72px">HUDDLE <span>UP</span></div>
+  <div class="box" id="periodCard"><h2>Which class period are you in?</h2><div class="btnGrid" id="periodGrid"></div><div class="msg" id="periodMsg"></div></div>
+  <div class="box" id="codeCard"><h2>Sign in with your backup code</h2>
+   <div class="small">Use this only if the game does not know who you are. Your teacher has your code.</div>
+   <div style="display:flex;gap:12px"><input class="field" id="codeInput" maxlength="8" autocomplete="off" spellcheck="false" style="width:240px"><button class="go" id="codeBtn" style="flex:0 0 140px">Go</button></div>
+   <div class="msg" id="codeMsg"></div></div>
+  <button class="exit" id="signinRetry">Exit / Start Over</button>
+ </div>
+ <div class="screen" id="sets">
+  <div class="proto" id="setsTitle">Pick a review set</div>
+  <div class="blurb">Your huddle questions come from this set.</div>
+  <div class="btnGrid" id="setGrid"></div>
+  <div class="msg" id="setMsg"></div>
+  <button class="exit" id="setsBack">Exit / Start Over</button>
+ </div>
+ <div class="screen" id="teacher">
+  <div class="proto">Teacher settings</div>
+  <div class="box" id="pinCard"><h2>Teacher PIN</h2><div class="small">The PIN is in the Settings tab of the class Sheet.</div>
+   <div style="display:flex;gap:12px"><input class="field" id="pinInput" type="password" maxlength="12" autocomplete="off" style="width:220px"><button class="go" id="pinBtn" style="flex:0 0 160px">Unlock</button></div>
+   <div class="msg" id="pinMsg"></div></div>
+  <div class="box" id="setCard" style="display:none"><h2>Settings for every student</h2>
+   <div class="tset">
+    <label for="tLen">Game length</label><select id="tLen"><option value="Quick">Quick (~15 min, 6 plays a quarter)</option><option value="Standard">Standard (~30 min, 12 plays)</option><option value="Full Period">Full Period (~45 min, 18 plays)</option><option value="Custom">Custom</option></select>
+    <label for="tPlays" id="tPlaysLbl">Custom: plays a quarter (3 to 25)</label><input id="tPlays" type="number" min="3" max="25" value="8">
+    <label for="tDiff">Computer difficulty (Solo)</label><select id="tDiff"><option>Easy</option><option>Normal</option><option>Hard</option><option>Expert</option></select>
+    <label for="tRpp">Rating per skill point</label><select id="tRpp"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+    <label for="tClock">Play clock</label><select id="tClock"><option value="0">Off</option><option value="15">15 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select>
+    <label for="tRA">Read aloud for everyone</label><select id="tRA"><option value="No">Off</option><option value="Yes">On</option></select>
+   </div>
+   <div class="small">Saved to the Settings tab. Students get the new settings the next time they open the game.</div>
+   <div style="display:flex;gap:12px"><button class="go" id="tSave" style="flex:0 0 260px">Save settings</button></div>
+   <div class="msg" id="tMsg"></div></div>
+  <button class="exit" id="teacherBack">Exit / Start Over</button>
  </div>
  <div class="screen" id="net">
   <div class="proto" id="netTitle">Head-to-Head</div>
@@ -190,7 +256,8 @@ button{font-family:inherit;cursor:pointer}
   <div class="proto">Final</div><div class="logo" style="font-size:64px" id="fWin"></div>
   <div class="matchup"><span class="tag" style="background:#0E7C86">PELICANS</span><span id="fHome" class="score">0</span><span style="color:#A9B6CA">–</span><span id="fAway" class="score">0</span><span class="tag" style="background:#5B2A86">COMETS</span></div>
   <div class="stats" id="fStats"></div>
-  <button class="go bigbtn" id="again">Play Again</button>
+  <div style="display:flex;gap:16px"><button class="go bigbtn" id="again">Play Again</button><button class="go alt bigbtn" id="copyBtn" style="background:#1D4ED8;color:#fff">Copy Results</button></div>
+  <textarea id="copyBox" readonly></textarea><div id="copyMsg"></div><div id="saveNote"></div>
   <button class="exit" data-exit>Exit / Start Over</button>
  </div>
 </div></div>
@@ -198,7 +265,7 @@ button{font-family:inherit;cursor:pointer}
 // HUDDLEUP_PAGE
 // Test questions for the field prototype. Same columns as a Studio 68 question tab:
 // Question, Correct answer, Wrong answer 1, Wrong answer 2, Wrong answer 3, Wrong answer 4, Resource tag, TEKS
-// (TEKS left blank on purpose: these are placeholders until the Sheet connection in step 9.)
+// Used only outside Apps Script (preview). Inside Apps Script the questions come from the class Sheet.
 var SAMPLE_QUESTIONS = [
   ['What event in October 1929 helped start the Great Depression?', 'The stock market crash', 'The Dust Bowl', 'The Bonus Army march', 'The New Deal', '', 'Prototype test', ''],
   ['What were Hoovervilles?', 'Shantytowns built by homeless people', 'Government housing projects', 'Farm co-ops in the Midwest', 'Factory towns owned by banks', '', 'Prototype test', ''],
@@ -212,7 +279,7 @@ var SAMPLE_QUESTIONS = [
   ['Who were the "Okies"?', 'Farm families who moved west to escape the Dust Bowl', 'New York bankers who lost everything', 'World War I veterans', 'Union leaders in Detroit', '', 'Prototype test', ''],
 ];
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.7.0 special teams';
+var INDEX_VERSION = '0.8.0 sheet connection';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -232,16 +299,24 @@ let LENGTH = 'Standard', PLAYS_PER_QUARTER = 12, PLAYS_PER_GAME = 48;
 // Teacher settings (the gear menu comes later). Test overrides: ?diff=Easy|Normal|Hard|Expert, ?rpp=1|2|3
 const DIFFS = { Easy: { miss: 0.40, brk: 2 }, Normal: { miss: 0.25, brk: 4 }, Hard: { miss: 0.10, brk: 5 }, Expert: { miss: 0, brk: 6 } };
 let DIFF = 'Normal', CPU_MISS = 0.25, CPU_BREAK_POINTS = 4; // set by applySettings()
-// Teacher settings for this game. The gear menu (with the PIN from the Settings tab) comes with the Sheet in step 9.
+// Teacher settings for this game (Settings tab of the class Sheet, changed with the gear icon).
+// length: 'Quick' | 'Standard' | 'Full Period' | a number of plays per quarter (custom, 3 to 25).
 function applySettings(length, diff) {
-  LENGTH = LENGTHS[length] ? length : 'Standard';
-  PLAYS_PER_QUARTER = LENGTHS[LENGTH]; PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+  const n = parseInt(length, 10);
+  const named = Object.keys(LENGTHS).find(k => LENGTHS[k] === n); // 6, 12 or 18 plays = Quick, Standard, Full Period
+  if (LENGTHS[length] || named) { LENGTH = LENGTHS[length] ? length : named; PLAYS_PER_QUARTER = LENGTHS[LENGTH]; }
+  else if (n >= 3 && n <= 25) { LENGTH = String(n); PLAYS_PER_QUARTER = n; }
+  else { LENGTH = 'Standard'; PLAYS_PER_QUARTER = LENGTHS.Standard; }
+  PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
   DIFF = DIFFS[diff] ? diff : 'Normal';
   CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses each huddle question
   CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
 }
+const lengthName = () => LENGTHS[LENGTH] ? LENGTH : `Custom (${PLAYS_PER_QUARTER} plays a quarter)`;
 applySettings(QS.get('len'), QS.get('diff'));
-const RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
+let RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
+let PLAY_CLOCK = [15, 20, 30].includes(+QS.get('clock')) ? +QS.get('clock') : 0; // seconds per huddle question, 0 = off
+let READ_ALL = QS.get('raall') === '1';                                         // read aloud for everyone
 const RATING_CAP = 100;
 const INJURY_STREAK = 3, INJURY_PLAYS = 3; // 3 wrong in a row = a player is shaken up for 3 plays
 const EXTENDED_TIME = 1.5;                // guessing speed check is 1.5x longer with extended time
@@ -289,7 +364,8 @@ const POS_INFO = { 'QB': 'Pass accuracy', 'RB': 'Breaking tackles', 'WR': 'Catch
 const POS_ROLE = { 'QB': ['QB', 0], 'RB': ['RB', 0], 'WR': ['WR', 0], 'O-Line': ['C', 0], 'D-Line': ['DL', 1], 'Linebacker': ['LB', 1], 'Secondary': ['S', 0] };
 
 let G = null;
-const QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean) }));
+// Questions for this game. Replaced by the question tab the student picks once the Sheet answers (server.js).
+let QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean), teks: r[7] || '' }));
 const other = t => t === 'home' ? 'away' : 'home';
 const dir = () => G.poss === 'home' ? 1 : -1;               // offense moves +x (Pelicans) or -x (Comets)
 const ytg = () => G.poss === 'home' ? 100 - G.ballX : G.ballX; // yards to the goal line for the offense
@@ -1090,7 +1166,7 @@ function netScreen(title, big, msg, opts) {
 function hostGame() {
   netScreen('Head-to-Head', '····', 'Making a game code...', { wait: true });
   G.mode = 'lobby';
-  netCall('h2hCreate', { length: LENGTH, rpp: RATING_PER_POINT }).then(r => {
+  netCall('h2hCreate', { length: LENGTH, ppq: PLAYS_PER_QUARTER, rpp: RATING_PER_POINT, set: APP.set }, playerEmail()).then(r => {
     if (G.mode !== 'lobby') return;
     netStart(r.code, r.seed, 'home');
     $('#netBig').textContent = r.code;
@@ -1103,21 +1179,26 @@ function joinGame() {
   const code = $('#joinCode').value.toUpperCase().replace(/[^A-Z]/g, '');
   if (code.length !== 4) { $('#netErr').textContent = 'The code has 4 letters.'; return; }
   $('#joinBtn').disabled = true; $('#netErr').textContent = 'Joining...';
-  netCall('h2hJoin', code).then(r => {
-    $('#joinBtn').disabled = false;
-    if (!r || !r.ok) { $('#netErr').textContent = (r && r.msg) || 'Could not join that game.'; return; }
-    applySettings(r.settings && r.settings.length, DIFF);
+  netCall('h2hJoin', code, playerEmail()).then(r => {
+    if (!r || !r.ok) { $('#joinBtn').disabled = false; $('#netErr').textContent = (r && r.msg) || 'Could not join that game.'; return; }
+    const st = r.settings || {};
+    applySettings(LENGTHS[st.length] ? st.length : st.ppq || st.length, DIFF); // the game length and +1 value come from the coach who made the game
+    if ([1, 2, 3].includes(+st.rpp)) RATING_PER_POINT = +st.rpp;
     netStart(code, r.seed, 'away');
-    startNetGame();
+    // Questions come from the set the other coach picked.
+    const set = st.set && st.set.questionTab ? st.set : APP.sets[0] || { name: 'Sample', questionTab: 'Sample Great Depression' };
+    $('#netErr').textContent = 'Loading the questions...';
+    loadSet(set).then(() => { $('#joinBtn').disabled = false; useSet(set); startNetGame(); },
+      err => { $('#joinBtn').disabled = false; netStop(); $('#netErr').textContent = `Could not load the questions: ${err.message || err}`; });
   }, () => { $('#joinBtn').disabled = false; $('#netErr').textContent = 'Could not reach the game. Check the internet connection and try again.'; });
 }
 function startNetGame() {
   $('#net').classList.remove('show'); stopSpeech();
-  newGame({ me: NET.side, net: { code: NET.code, seed: NET.seed } });
+  newGame({ me: NET.side, net: { code: NET.code, seed: NET.seed }, play: true });
   banner('Head-to-Head', `${meN()} vs ${opN()} · ${TEAMS.away.short} kick off to the ${TEAMS.home.short}`, '');
 }
 function otherCoachLeft() {
-  G.mode = 'left'; closeHuddle(); $('#break').classList.remove('show'); netStop();
+  logGameRow(false); G.mode = 'left'; closeHuddle(); $('#break').classList.remove('show'); netStop();
   netScreen('Head-to-Head', '', `The ${opN()} coach left the game. Press Exit / Start Over to play again.`);
 }
 
@@ -1161,7 +1242,258 @@ function resolveFourth() {
 setInterval(() => {
   if (G && (G.mode === 'wait' || G.mode === 'wait4') && performance.now() - G.waitStart > 45000 && $('#hint')) $('#hint').textContent = `Still waiting. If the ${opN()} coach left, press Exit / Start Over.`;
 }, 2000);
-// Huddle Up: game flow (build step 6). Solo: Pelicans = the student coach, Comets = computer coach.
+
+// ---------- Sheet connection (build step 8) ----------
+// Inside Apps Script the page talks to Code.gs: who is signed in, the Roster accommodations, the open
+// question sets, the teacher settings, and logging every answer (Results tab) and every game (Games tab).
+// Opened outside Apps Script (downloaded file or test page), PREVIEW below stands in for Code.gs.
+const HAS_SERVER = typeof google !== 'undefined' && !!(google.script && google.script.run);
+const IS_TEST = !HAS_SERVER || (typeof SERVER_TEST !== 'undefined' && SERVER_TEST === true); // test link (?test=1) or preview
+const APP = { email: '', codeEmail: '', student: {}, sets: [], settings: null, set: null, tab: '', qcache: {}, pin: '' };
+const playerEmail = () => APP.codeEmail || APP.email || '';
+const PREVIEW_PIN = '1234';
+const sampleQuestions = () => SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean), teks: r[7] || '' }));
+
+const PREVIEW = {
+  getStartupData() {
+    const sets = [{ number: 1, name: 'Sample: Great Depression', questionTab: 'Sample Great Depression' }];
+    if (QS.get('sets') === '2') sets.push({ number: 2, name: 'Sample: Short set', questionTab: 'Short set' });
+    return { email: 'preview', preview: true, sets, settings: null, version: 'preview',
+      student: { onRoster: true, name: 'Preview Student', period: '1', readAloud: QS.get('ra') === '1', extended: QS.get('et') === '1', reduced: QS.get('rc') === '1' } };
+  },
+  getQuestions(tab) { const q = sampleQuestions(); return { tab, error: '', questions: tab === 'Short set' ? q.slice(0, 4) : q }; },
+  logAnswers(rows) { (window.__log = window.__log || []).push(...rows); return rows.length; },
+  logGame(g, email) { (window.__games = window.__games || []).push(Object.assign({ email }, g)); return { ok: true }; },
+  registerStudent() { return { ok: true, student: this.getStartupData().student }; },
+  redeemBackupCode() { return { ok: false, error: 'Backup codes only work in the real game.' }; },
+  checkTeacherPin(pin) { return pin === PREVIEW_PIN ? { ok: true, settings: currentSettings() } : { ok: false, error: `That PIN is not right. (Preview PIN: ${PREVIEW_PIN})` }; },
+  saveTeacherSettings(pin, s) {
+    if (pin !== PREVIEW_PIN) return { ok: false, error: 'That PIN is not right.' };
+    const ppq = { Quick: 6, Standard: 12, 'Full Period': 18 }[s.length] || clamp(parseInt(s.length, 10) || 12, 3, 25);
+    return { ok: true, settings: { length: LENGTHS[s.length] ? s.length : String(ppq), ppq, difficulty: s.difficulty, rpp: +s.rpp, clock: +s.clock, readAll: s.readAll === 'Yes' } };
+  },
+};
+function serverCall(fn, ...args) {
+  if (!HAS_SERVER) return new Promise((res, rej) => { try { res(PREVIEW[fn](...args)); } catch (e) { rej(e); } });
+  return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args));
+}
+const currentSettings = () => ({ length: LENGTH, ppq: PLAYS_PER_QUARTER, difficulty: DIFF, rpp: RATING_PER_POINT, clock: PLAY_CLOCK, readAll: READ_ALL });
+
+// ---------- screens ----------
+const SCREENS = ['loading', 'signin', 'sets', 'teacher', 'title', 'net', 'final'];
+function showScreen(id) { SCREENS.forEach(s => $('#' + s).classList.toggle('show', s === id)); }
+
+// ---------- startup and sign-in ----------
+function startup() {
+  document.body.classList.toggle('test', IS_TEST);
+  if (!HAS_SERVER) return onStartup(PREVIEW.getStartupData()); // preview: no waiting
+  showScreen('loading'); $('#loadMsg').textContent = 'Asking the class Sheet who you are...';
+  serverCall('getStartupData').then(onStartup, err => { $('#loadMsg').textContent = `The game could not reach the class Sheet (${err}). Reload the page to try again.`; });
+}
+function onStartup(data) {
+  APP.email = data.email || ''; APP.student = data.student || {}; APP.sets = data.sets || [];
+  if (data.settings) applyServerSettings(data.settings);
+  if (!HAS_SERVER) APP.qcache['Sample Great Depression'] = sampleQuestions();
+  if (HAS_SERVER && !APP.email) return showSignin(false);
+  if (HAS_SERVER && !String(APP.student.period || '').trim()) return showSignin(true);
+  signedIn();
+}
+function signedIn() {
+  // Accommodations come from the Roster checkboxes. The test options (test link only) start from them too.
+  const s = APP.student;
+  $('#optRA').checked = !!s.readAloud || QS.get('ra') === '1';
+  $('#optRC').checked = !!s.reduced || QS.get('rc') === '1';
+  $('#optET').checked = !!s.extended || QS.get('et') === '1';
+  if (APP.sets.length === 1) loadSet(APP.sets[0]).catch(() => { }); // get the questions ready in the background
+  showTitle();
+}
+function showSignin(needPeriod) {
+  $('#periodCard').style.display = needPeriod ? '' : 'none';
+  $('#codeCard').style.display = needPeriod ? 'none' : '';
+  $('#periodMsg').textContent = ''; $('#codeMsg').textContent = '';
+  $('#periodGrid').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map(p => `<button data-period="${p}">${p}</button>`).join('');
+  $$('[data-period]').forEach(b => b.onclick = () => choosePeriod(+b.dataset.period));
+  showScreen('signin');
+  if (!needPeriod) setTimeout(() => $('#codeInput').focus(), 50);
+}
+function choosePeriod(p) {
+  const btns = $$('[data-period]'); btns.forEach(b => b.disabled = true); $('#periodMsg').textContent = `Saving period ${p}...`;
+  serverCall('registerStudent', p).then(res => {
+    if (!res || !res.ok) { $('#periodMsg').textContent = (res && res.error) || 'Could not save your period. Try again.'; btns.forEach(b => b.disabled = false); return; }
+    APP.student = res.student; signedIn();
+  }, err => { $('#periodMsg').textContent = `Could not save your period (${err}). Try again.`; btns.forEach(b => b.disabled = false); });
+}
+function redeemCode() {
+  const code = $('#codeInput').value.trim(); $('#codeMsg').textContent = 'Checking...'; $('#codeBtn').disabled = true;
+  serverCall('redeemBackupCode', code).then(res => {
+    $('#codeBtn').disabled = false;
+    if (!res || !res.ok) { $('#codeMsg').textContent = (res && res.error) || 'That code did not work.'; return; }
+    APP.codeEmail = res.email; APP.student = res.student; signedIn();
+  }, err => { $('#codeBtn').disabled = false; $('#codeMsg').textContent = `Could not check the code (${err}).`; });
+}
+function showTitle() {
+  stopSpeech(); showScreen('title'); if (G) G.mode = 'title';
+  const s = APP.student, bits = [];
+  if (s.name) bits.push(`Coach ${s.name}`); if (s.period) bits.push(`Period ${s.period}`);
+  if (APP.sets.length === 1) bits.push(APP.sets[0].name);
+  $('#who').textContent = bits.join(' · ');
+  titleBlurb();
+}
+
+// ---------- question sets ----------
+function loadSet(s) {
+  if (APP.qcache[s.questionTab]) return Promise.resolve(APP.qcache[s.questionTab]);
+  return serverCall('getQuestions', s.questionTab).then(res => {
+    if (!res || res.error || !res.questions || !res.questions.length) throw new Error((res && res.error) || 'No questions found in that set.');
+    APP.qcache[s.questionTab] = res.questions.map(q => ({ q: q.q, a: q.a, w: (q.w || []).filter(Boolean), teks: q.teks || '' }));
+    return APP.qcache[s.questionTab];
+  });
+}
+function useSet(s) { APP.set = s; APP.tab = s.questionTab; QUESTIONS = APP.qcache[s.questionTab]; if (G) G.deck = []; }
+// Pick a question set, then run done(). Skipped when only one set is open. Runs right away if the questions are ready.
+function pickSet(done) {
+  const sets = APP.sets;
+  if (!sets.length) {
+    showScreen('sets'); $('#setGrid').innerHTML = '';
+    $('#setMsg').textContent = 'No review sets are open yet. Your teacher opens them in the Sets tab of the class Sheet.';
+    return;
+  }
+  if (sets.length === 1) return chooseSet(sets[0], done);
+  showScreen('sets'); $('#setMsg').textContent = '';
+  $('#setGrid').innerHTML = sets.map((s, i) => `<button data-set="${i}">${esc(s.name)}</button>`).join('');
+  $$('[data-set]').forEach(b => b.onclick = () => chooseSet(sets[+b.dataset.set], done));
+  if (G && G.accom && G.accom.readAloud) speak('Pick a review set. ' + sets.map(s => s.name).join('. '));
+}
+function chooseSet(s, done) {
+  if (APP.qcache[s.questionTab]) { useSet(s); $('#sets').classList.remove('show'); return done(); }
+  showScreen('sets'); $('#setGrid').innerHTML = ''; $('#setMsg').style.color = '#C8D3E3'; $('#setMsg').textContent = `Loading ${s.name}...`;
+  loadSet(s).then(() => { $('#setMsg').style.color = ''; $('#setMsg').textContent = ''; useSet(s); $('#sets').classList.remove('show'); done(); },
+    err => { $('#setMsg').style.color = ''; $('#setMsg').textContent = `Could not load the questions: ${err.message || err}`; });
+}
+
+// ---------- teacher settings (gear icon, locked with the Teacher PIN from the Settings tab) ----------
+function applyServerSettings(s) {
+  APP.settings = s;
+  applySettings(LENGTHS[s.length] ? s.length : s.ppq, s.difficulty);
+  RATING_PER_POINT = [1, 2, 3].includes(+s.rpp) ? +s.rpp : 2;
+  PLAY_CLOCK = [15, 20, 30].includes(+s.clock) ? +s.clock : 0;
+  READ_ALL = !!s.readAll;
+  const sel = $('#optLen');
+  if (!LENGTHS[LENGTH] && !sel.querySelector(`option[value="${LENGTH}"]`)) sel.insertAdjacentHTML('beforeend', `<option value="${LENGTH}">Custom (${LENGTH})</option>`);
+  sel.value = LENGTH; $('#optDiff').value = DIFF;
+  $('#ver').textContent = 'Build ' + INDEX_VERSION + ' · +1 = ' + RATING_PER_POINT + ' rating' + (PLAY_CLOCK ? ` · play clock ${PLAY_CLOCK} s` : '');
+}
+function openTeacher() {
+  showScreen('teacher'); $('#pinCard').style.display = ''; $('#setCard').style.display = 'none';
+  $('#pinInput').value = ''; $('#pinMsg').textContent = HAS_SERVER && APP.settings && !APP.settings.pinSet ? 'No Teacher PIN yet. Type one in the Settings tab of the class Sheet, then reload the game.' : '';
+  setTimeout(() => $('#pinInput').focus(), 50);
+}
+function unlockTeacher() {
+  const pin = $('#pinInput').value.trim(); if (!pin) { $('#pinMsg').textContent = 'Type the PIN first.'; return; }
+  $('#pinBtn').disabled = true; $('#pinMsg').textContent = 'Checking...';
+  serverCall('checkTeacherPin', pin).then(res => {
+    $('#pinBtn').disabled = false;
+    if (!res || !res.ok) { $('#pinMsg').textContent = (res && res.error) || 'That PIN is not right.'; return; }
+    APP.pin = pin; fillTeacher(res.settings || currentSettings());
+    $('#pinCard').style.display = 'none'; $('#setCard').style.display = ''; $('#tMsg').textContent = '';
+  }, err => { $('#pinBtn').disabled = false; $('#pinMsg').textContent = `Could not check the PIN (${err}).`; });
+}
+function fillTeacher(s) {
+  const custom = !LENGTHS[s.length];
+  $('#tLen').value = custom ? 'Custom' : s.length; $('#tPlays').value = custom ? (s.ppq || s.length) : 8;
+  $('#tDiff').value = s.difficulty || 'Normal'; $('#tRpp').value = String(s.rpp || 2); $('#tClock').value = String(s.clock || 0); $('#tRA').value = s.readAll ? 'Yes' : 'No';
+  customShown();
+}
+function customShown() { const on = $('#tLen').value === 'Custom'; $('#tPlays').style.visibility = $('#tPlaysLbl').style.visibility = on ? 'visible' : 'hidden'; }
+function saveTeacher() {
+  const len = $('#tLen').value === 'Custom' ? String(clamp(parseInt($('#tPlays').value, 10) || 8, 3, 25)) : $('#tLen').value;
+  const s = { length: len, difficulty: $('#tDiff').value, rpp: $('#tRpp').value, clock: $('#tClock').value, readAll: $('#tRA').value };
+  $('#tSave').disabled = true; $('#tMsg').style.color = '#C8D3E3'; $('#tMsg').textContent = 'Saving...';
+  serverCall('saveTeacherSettings', APP.pin, s).then(res => {
+    $('#tSave').disabled = false; $('#tMsg').style.color = '';
+    if (!res || !res.ok) { $('#tMsg').textContent = (res && res.error) || 'Could not save.'; return; }
+    applyServerSettings(res.settings); fillTeacher(res.settings);
+    $('#tMsg').style.color = '#86EFAC'; $('#tMsg').textContent = 'Saved. ' + `${lengthName()} game, computer ${DIFF}, +1 = ${RATING_PER_POINT} rating, play clock ${PLAY_CLOCK ? PLAY_CLOCK + ' seconds' : 'off'}, read aloud for everyone ${READ_ALL ? 'on' : 'off'}.`;
+  }, err => { $('#tSave').disabled = false; $('#tMsg').style.color = ''; $('#tMsg').textContent = `Could not save (${err}).`; });
+}
+
+// ---------- play clock (off unless the teacher turns it on; extended time doubles it) ----------
+function clockTick(now) {
+  const el = $('#hClock');
+  if (!G || G.mode !== 'huddle' || !G.clockLimit || G.answered) { if (el.style.display !== 'none' && (!G || G.mode !== 'huddle' || !G.clockLimit)) el.style.display = 'none'; return; }
+  if (now < G.lockUntil) return;
+  const left = G.clockLimit - Math.max(0, now - G.clockStart) / 1000;
+  el.style.display = 'inline-block'; el.textContent = Math.max(0, Math.ceil(left)) + 's'; el.classList.toggle('low', left <= 5);
+  if (left <= 0) answer(-1); // time ran out: counts as a missed answer
+}
+
+// ---------- Results logging (small batches; the last 2 wait in case they get guess-flagged) ----------
+const LOG = { queue: [], sending: false, again: false, sent: 0, failed: false };
+function logAnswer(e) { e.set = APP.set ? APP.set.name : 'Sample'; e.tab = APP.tab || ''; LOG.queue.push(e); flushLog(false); }
+const toRow = e => ({ time: e.time, email: playerEmail(), set: e.set, tab: e.tab, question: e.question, teks: e.teks, result: e.result, accom: e.accom, guess: !!e.guess, event: e.event });
+function flushLog(force) {
+  if (LOG.sending) { if (force) LOG.again = true; return; }
+  const n = LOG.queue.length - (force ? 0 : 2); if (n <= 0 || (!force && n < 3)) return;
+  const batch = LOG.queue.splice(0, n); LOG.sending = true;
+  serverCall('logAnswers', batch.map(toRow)).then(() => {
+    LOG.sending = false; LOG.sent += batch.length; LOG.failed = false; saveNote();
+    if (LOG.again) { LOG.again = false; flushLog(true); }
+  }, () => { LOG.sending = false; LOG.failed = true; LOG.queue = batch.concat(LOG.queue); saveNote(); setTimeout(() => flushLog(true), 8000); });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushLog(true); });
+addEventListener('pagehide', () => { flushLog(true); logGameRow(false); });
+
+// ---------- Games tab (one row per game; Head-to-Head is written once for both coaches) ----------
+const gameStarted = () => G && G.started && !G.gameLogged && (G.play > 0 || G.log.length > 0);
+function logGameRow(finished) {
+  if (!gameStarted()) return;
+  G.gameLogged = true;
+  const row = { code: G.net ? G.net.code : '', side: G.me, set: APP.set ? APP.set.name : 'Sample', difficulty: G.net ? '' : DIFF,
+    length: lengthName(), home: G.score.home, away: G.score.away, finished: !!finished, plays: G.play };
+  const g = G;
+  serverCall('logGame', row, playerEmail()).then(() => { g.gameSaved = true; saveNote(); }, () => { g.gameSaved = false; g.gameFailed = true; saveNote(); });
+}
+function saveNote() {
+  const el = $('#saveNote'); if (!el || !G || G.mode !== 'final') return;
+  el.textContent = !HAS_SERVER ? 'Preview: results are not saved to a Sheet.'
+    : LOG.failed || G.gameFailed ? 'Saving to the class Sheet... (retrying)'
+    : LOG.queue.length || !G.gameSaved ? 'Saving to the class Sheet...' : 'Saved to the class Sheet.';
+}
+// Leaving a game early (Exit / Start Over): save what was played.
+function endGameEarly() { if (gameStarted() && G.mode !== 'final') logGameRow(false); flushLog(true); }
+
+// ---------- final screen: Copy Results for Google Classroom ----------
+function resultsText() {
+  const h = G.score.home, a = G.score.away, mine = G.score[G.me], theirs = G.score[other(G.me)];
+  const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length;
+  const d = new Date(), date = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  const outcome = mine > theirs ? 'Win' : mine < theirs ? 'Loss' : 'Tie';
+  return [`Huddle Up results · ${APP.student.name || 'Student'}${APP.student.period ? ' · Period ' + APP.student.period : ''} · ${date}`,
+    `Set: ${APP.set ? APP.set.name : 'Sample'} · ${G.net ? 'Head-to-Head' : 'Solo vs Computer (' + DIFF + ')'} · ${lengthName()} game`,
+    `Final: Pelicans ${h}, Comets ${a} (${outcome}) · Questions: ${G.right} right, ${G.wrong} wrong` + (scored.length ? ` · ${Math.round(100 * ok / scored.length)}% correct` : '')].join('\n');
+}
+function copyResults() {
+  const text = resultsText(), box = $('#copyBox'), msg = $('#copyMsg');
+  box.value = text; box.style.display = 'block';
+  const done = () => { msg.textContent = 'Copied. Paste it into your Google Classroom assignment.'; };
+  const fallback = () => { box.focus(); box.select(); let okc = false; try { okc = document.execCommand('copy'); } catch (e) { } msg.textContent = okc ? 'Copied. Paste it into your Google Classroom assignment.' : 'Select the text in the box, press Ctrl+C, then paste it into Google Classroom.'; };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { }
+  fallback();
+}
+
+// ---------- buttons ----------
+$('#codeBtn').onclick = redeemCode;
+$('#codeInput').onkeydown = e => { if (e.key === 'Enter') redeemCode(); };
+$('#signinRetry').onclick = startup;
+$('#setsBack').onclick = () => showTitle();
+$('#gearBtn').onclick = openTeacher;
+$('#pinBtn').onclick = unlockTeacher;
+$('#pinInput').onkeydown = e => { if (e.key === 'Enter') unlockTeacher(); };
+$('#tLen').onchange = customShown;
+$('#tSave').onclick = saveTeacher;
+$('#teacherBack').onclick = () => { APP.pin = ''; showTitle(); };
+$('#copyBtn').onclick = copyResults;
+// Huddle Up: game flow (build step 8). Solo: Pelicans = the student coach, Comets = computer coach.
 // Head-to-Head: G.me is this computer's team ('home' Pelicans or 'away' Comets), G.net is set (see net.js).
 
 function newGame(opts) {
@@ -1177,11 +1509,12 @@ function newGame(opts) {
   G = { me: opts.me || 'home', net: opts.net || null,
     score: { home: 0, away: 0 }, poss: 'away', ballX: 65, down: 1, toGo: 10, play: 0, seq: 0, pending: { kind: 'kickoff', kicker: 'away' }, points: 0, right: 0, wrong: 0,
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
-    accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
+    // Accommodations: Roster checkboxes (test link: the test options). Read aloud for everyone is a teacher setting.
+    accom: { readAloud: $('#optRA').checked || READ_ALL, rosterRA: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
     streak: 0, wrongRun: [], flags: 0, lockUntil: 0, log: [], cpuPoints: 0, injuries: 0, spent: 0,
     brk: { poss: 'home', score: 0 }, hist: { off: [], def: [] }, cpuStreak: 0, cpuInjuries: 0,
   };
-  G.defCall = null; setFormation();
+  G.started = !!opts.play; G.defCall = null; setFormation();
   G.camX = camTarget(G.ballX, dir());
   updateHud(); showCalls();
 }
@@ -1429,12 +1762,14 @@ function openHuddle(attempt, side) {
   $('#huddle').classList.add('show');
   G.clockStart = performance.now();
   if (G.accom.readAloud) { readQuestion(); G.clockStart += 1000 * questionWords() / 2.6; } // reading time starts after read-aloud
+  G.clockLimit = PLAY_CLOCK ? PLAY_CLOCK * (G.accom.extended ? 2 : 1) : 0;                // play clock (teacher setting), doubled for extended time
+  $('#hClock').style.display = 'none';
 }
 // Guessing check (Studio 68 rule): faster than 1 s + 0.25 s per word of question and choices.
 const countWords = t => String(t).trim().split(/\s+/).filter(Boolean).length;
 const questionWords = () => G.q.choices.reduce((n, c) => n + countWords(c.text), countWords(G.q.src.q));
 const minReadSeconds = () => (1 + 0.25 * questionWords()) * (G.accom.extended ? EXTENDED_TIME : 1);
-function accomText() { const a = []; if (G.accom.readAloud) a.push('Read aloud'); if (G.accom.extended) a.push('Extended time'); if (G.accom.reduced) a.push('Reduced choices'); return a.join(', '); }
+function accomText() { const a = []; if (G.accom.rosterRA) a.push('Read aloud'); if (G.accom.extended) a.push('Extended time'); if (G.accom.reduced) a.push('Reduced choices'); return a.join(', '); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function readQuestion() { speak(G.q.src.q + '. ' + G.q.choices.map((c, i) => 'ABCD'[i] + '. ' + c.text).join('. ')); }
 function speak(text) { try { if (!window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; speechSynthesis.speak(u); } catch (e) { } }
@@ -1442,14 +1777,16 @@ function stopSpeech() { try { window.speechSynthesis && speechSynthesis.cancel()
 
 function answer(i) {
   if (G.answered || performance.now() < G.lockUntil) return; G.answered = true;
-  const c = G.q.choices[i], off = G.hSide === 'offense', kick = KICK_PHASES.includes(G.hSide);
-  const fast = (performance.now() - G.clockStart) / 1000 < minReadSeconds();
-  // One log row per answer (saved to the Results tab once the Sheet is connected in step 9).
+  const timeUp = i < 0; // play clock ran out
+  const c = timeUp ? { text: '', right: false } : G.q.choices[i], off = G.hSide === 'offense', kick = KICK_PHASES.includes(G.hSide);
+  const fast = !timeUp && (performance.now() - G.clockStart) / 1000 < minReadSeconds();
+  // One log row per answer (sent to the Results tab of the class Sheet).
   const entry = { time: Date.now(), question: G.q.src.q, teks: G.q.src.teks || '', result: c.right ? 'Right' : 'Wrong', accom: accomText(), guess: false,
-    event: HUDDLE_NAMES[G.hSide] + (G.attempt === 2 ? ' · second chance' : '') };
-  G.log.push(entry);
+    event: HUDDLE_NAMES[G.hSide] + (G.attempt === 2 ? ' · second chance' : '') + (timeUp ? ' · play clock ran out' : '') + (G.net ? ' · Head-to-Head' : '') };
+  G.log.push(entry); logAnswer(entry);
   $$('.choice').forEach((b, j) => { b.disabled = true; if (G.q.choices[j].right) b.classList.add('right'); });
-  if (!c.right) $$('.choice')[i].classList.add('wrong');
+  if (!c.right && !timeUp) $$('.choice')[i].classList.add('wrong');
+  $('#hClock').style.display = 'none';
   const fb = $('#fb'), next = $('#hNext');
   let extra = '';
   if (c.right) {
@@ -1460,7 +1797,7 @@ function answer(i) {
     fb.textContent = G.attempt === 1 ? `Correct! Clean ${off || kick ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
     next.textContent = goText(); next.onclick = G.net ? sendReady : snap;
   } else {
-    G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: i, entry });
+    G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: timeUp ? null : i, entry });
     fb.className = 'bad';
     if (G.attempt === 1) {
       fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(G.hSide) + ' Answer one more to clear it up.';
@@ -1471,8 +1808,9 @@ function answer(i) {
     if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(G.me); }
     const g = checkGuessing(); if (g) extra += ' ' + g;
     fb.textContent += extra;
+    if (timeUp) fb.textContent = fb.textContent.replace(/^Not quite\./, 'Play clock ran out.');
   }
-  if (G.accom.readAloud) speak((c.right ? 'Correct. ' : 'Not quite. The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.)\s*/, ''));
+  if (G.accom.readAloud) speak((c.right ? 'Correct. ' : (timeUp ? 'Time is up. ' : 'Not quite. ') + 'The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.|Play clock ran out\.)\s*/, ''));
   updateHud();
   next.style.display = 'block';
 }
@@ -1502,7 +1840,7 @@ function tickInjuries() {
 function checkGuessing() {
   const run = G.wrongRun; if (run.length < 3) return '';
   const last = run.slice(-3);
-  if (!last.every(w => w.fast) && !last.every(w => w.pos === last[0].pos)) return '';
+  if (!last.every(w => w.fast) && !(last[0].pos != null && last.every(w => w.pos === last[0].pos))) return '';
   last.forEach(w => w.entry.guess = true);
   G.wrongRun = []; G.flags++;
   const secs = G.flags === 1 ? 5 : 10;
@@ -1703,17 +2041,20 @@ function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b1').style.fontSiz
 function hideBanner() { $('#banner').className = ''; }
 function showFinal() {
   G.mode = 'final'; if (G.net) netStop();
+  logGameRow(true); flushLog(true);
+  $('#copyBox').style.display = 'none'; $('#copyMsg').textContent = '';
   $('#fHome').textContent = G.score.home; $('#fAway').textContent = G.score.away;
   const h = G.score.home, a = G.score.away;
   const win = h > a ? 'home' : h < a ? 'away' : '';
   $('#fWin').textContent = win ? `${TEAMS[win].short} win${win === G.me ? '!' : ''}` : 'Tie game';
+  const setLine = `Set: <b>${esc(APP.set ? APP.set.name : 'Sample')}</b><br>`;
   const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length, flagged = G.log.length - scored.length;
-  $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
+  $('#fStats').innerHTML = setLine + `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
     (flagged ? `<br>Guess-flagged answers (left out of % correct): <b>${flagged}</b>` : '') +
     (G.net ? `<br>Head-to-Head vs the <b>${opN()}</b> coach` : `<br>Computer: <b>${DIFF}</b> · missed ${G.cpuMisses || 0} huddle question${G.cpuMisses === 1 ? '' : 's'}`) +
     `<br>Skill points spent: <b>${G.spent}</b> · unspent: <b>${G.points}</b>${G.injuries ? ` · players shaken up: <b>${G.injuries}</b>` : ''}`;
   $('#again').textContent = G.net ? 'New game' : 'Play Again';
-  $('#final').classList.add('show');
+  $('#final').classList.add('show'); saveNote();
 }
 const ord = n => ['1st', '2nd', '3rd', '4th'][n - 1] || n + 'th';
 function spot(x) { x = Math.round(x); return x === 50 ? 'the 50' : x < 50 ? `PEL ${x}` : `COM ${100 - x}`; }
@@ -1737,6 +2078,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (G) {
+    clockTick(now);
     if (G.mode === 'anim') {
       const t = (now - G.t0) / 1000;
       pose(G.plan, t);
@@ -1757,23 +2099,23 @@ $('#optRA').checked = QS.get('ra') === '1'; $('#optRC').checked = QS.get('rc') =
 $('#ver').textContent = 'Build ' + INDEX_VERSION + ' · +1 = ' + RATING_PER_POINT + ' rating';
 // Test pickers for the teacher settings (students will not see these once the gear menu exists).
 $('#optLen').value = LENGTH; $('#optDiff').value = DIFF;
-const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTH} game: 4 quarters, ${PLAYS_PER_QUARTER} plays each.`; };
+const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTHS[LENGTH] ? LENGTH : 'Custom'} game: 4 quarters, ${PLAYS_PER_QUARTER} plays each.`; };
 $('#optLen').onchange = $('#optDiff').onchange = () => { applySettings($('#optLen').value, $('#optDiff').value); titleBlurb(); updateHud(); };
 titleBlurb();
-$('#kick').onclick = () => { $('#title').classList.remove('show'); newGame(); };
-$('#again').onclick = () => { $('#final').classList.remove('show'); if (G.net) { newGame(); G.mode = 'title'; $('#title').classList.add('show'); } else newGame(); };
-$('#h2hBtn').onclick = () => { newGame(); hostGame(); };
+$('#kick').onclick = () => pickSet(() => { $('#title').classList.remove('show'); newGame({ play: true }); });
+$('#again').onclick = () => { $('#final').classList.remove('show'); if (G.net) { newGame(); showTitle(); } else newGame({ play: true }); };
+$('#h2hBtn').onclick = () => pickSet(() => { newGame(); hostGame(); }); // the coach who makes the game picks the set
 $('#joinOpen').onclick = () => { newGame(); joinScreen(); };
 $('#joinBtn').onclick = joinGame;
 $('#joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame(); };
-$('#netBack').onclick = () => { $('#net').classList.remove('show'); $('#title').classList.add('show'); G.mode = 'title'; };
-$$('[data-exit]').forEach(b => b.onclick = () => { netLeave(); $('#net').classList.remove('show'); stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
+$('#netBack').onclick = () => showTitle();
+$$('[data-exit]').forEach(b => b.onclick = () => { endGameEarly(); netLeave(); $('#net').classList.remove('show'); stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); newGame(); showTitle(); });
 $('#hSpeak').onclick = readQuestion;
 $('#plusBtn').onclick = spendPoint;
 $('#bkDone').onclick = closeBreak;
 addEventListener('keydown', e => {
   if (G && G.mode === 'huddle' && !G.answered && document.activeElement !== $('#joinCode')) { const k = 'abcd'.indexOf(e.key.toLowerCase()); const n = '1234'.indexOf(e.key); const i = k >= 0 ? k : n; if (i >= 0 && i < G.q.choices.length) answer(i); }
 });
-newGame(); G.mode = 'title';
+newGame(); G.mode = 'title'; startup();
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
 </script></body></html>

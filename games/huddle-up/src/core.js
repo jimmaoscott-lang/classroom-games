@@ -1,5 +1,5 @@
 // Huddle Up: shared helpers, teams, chart values, camera projection.
-var INDEX_VERSION = '0.7.0 special teams';
+var INDEX_VERSION = '0.8.0 sheet connection';
 const QS = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -19,16 +19,24 @@ let LENGTH = 'Standard', PLAYS_PER_QUARTER = 12, PLAYS_PER_GAME = 48;
 // Teacher settings (the gear menu comes later). Test overrides: ?diff=Easy|Normal|Hard|Expert, ?rpp=1|2|3
 const DIFFS = { Easy: { miss: 0.40, brk: 2 }, Normal: { miss: 0.25, brk: 4 }, Hard: { miss: 0.10, brk: 5 }, Expert: { miss: 0, brk: 6 } };
 let DIFF = 'Normal', CPU_MISS = 0.25, CPU_BREAK_POINTS = 4; // set by applySettings()
-// Teacher settings for this game. The gear menu (with the PIN from the Settings tab) comes with the Sheet in step 9.
+// Teacher settings for this game (Settings tab of the class Sheet, changed with the gear icon).
+// length: 'Quick' | 'Standard' | 'Full Period' | a number of plays per quarter (custom, 3 to 25).
 function applySettings(length, diff) {
-  LENGTH = LENGTHS[length] ? length : 'Standard';
-  PLAYS_PER_QUARTER = LENGTHS[LENGTH]; PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
+  const n = parseInt(length, 10);
+  const named = Object.keys(LENGTHS).find(k => LENGTHS[k] === n); // 6, 12 or 18 plays = Quick, Standard, Full Period
+  if (LENGTHS[length] || named) { LENGTH = LENGTHS[length] ? length : named; PLAYS_PER_QUARTER = LENGTHS[LENGTH]; }
+  else if (n >= 3 && n <= 25) { LENGTH = String(n); PLAYS_PER_QUARTER = n; }
+  else { LENGTH = 'Standard'; PLAYS_PER_QUARTER = LENGTHS.Standard; }
+  PLAYS_PER_GAME = QUARTERS * PLAYS_PER_QUARTER;
   DIFF = DIFFS[diff] ? diff : 'Normal';
   CPU_MISS = DIFFS[DIFF].miss;        // how often the computer misses each huddle question
   CPU_BREAK_POINTS = DIFFS[DIFF].brk; // skill points the computer gets at each break
 }
+const lengthName = () => LENGTHS[LENGTH] ? LENGTH : `Custom (${PLAYS_PER_QUARTER} plays a quarter)`;
 applySettings(QS.get('len'), QS.get('diff'));
-const RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
+let RATING_PER_POINT = [1, 2, 3].includes(+QS.get('rpp')) ? +QS.get('rpp') : 2;
+let PLAY_CLOCK = [15, 20, 30].includes(+QS.get('clock')) ? +QS.get('clock') : 0; // seconds per huddle question, 0 = off
+let READ_ALL = QS.get('raall') === '1';                                         // read aloud for everyone
 const RATING_CAP = 100;
 const INJURY_STREAK = 3, INJURY_PLAYS = 3; // 3 wrong in a row = a player is shaken up for 3 plays
 const EXTENDED_TIME = 1.5;                // guessing speed check is 1.5x longer with extended time
@@ -76,7 +84,8 @@ const POS_INFO = { 'QB': 'Pass accuracy', 'RB': 'Breaking tackles', 'WR': 'Catch
 const POS_ROLE = { 'QB': ['QB', 0], 'RB': ['RB', 0], 'WR': ['WR', 0], 'O-Line': ['C', 0], 'D-Line': ['DL', 1], 'Linebacker': ['LB', 1], 'Secondary': ['S', 0] };
 
 let G = null;
-const QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean) }));
+// Questions for this game. Replaced by the question tab the student picks once the Sheet answers (server.js).
+let QUESTIONS = SAMPLE_QUESTIONS.map(r => ({ q: r[0], a: r[1], w: [r[2], r[3], r[4]].filter(Boolean), teks: r[7] || '' }));
 const other = t => t === 'home' ? 'away' : 'home';
 const dir = () => G.poss === 'home' ? 1 : -1;               // offense moves +x (Pelicans) or -x (Comets)
 const ytg = () => G.poss === 'home' ? 100 - G.ballX : G.ballX; // yards to the goal line for the offense

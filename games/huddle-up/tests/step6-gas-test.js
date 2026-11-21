@@ -1,12 +1,13 @@
 // Head-to-Head through the real Code.gs functions (CacheService and LockService mocked in Node).
 // Run from games/huddle-up:  node tests/step6-gas-test.js
 const { chromium } = require('/opt/npm-tools/node_modules/playwright');
-const http = require('http'), fs = require('fs'), path = require('path'), vm = require('vm');
+const http = require('http'), fs = require('fs'), path = require('path');
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
-const store = new Map();
-const cache = { get: k => store.has(k) ? store.get(k) : null, put: (k, v) => store.set(k, String(v)), getAll: ks => { const o = {}; ks.forEach(k => { if (store.has(k)) o[k] = store.get(k); }); return o; } };
-const gs = vm.createContext({ CacheService: { getScriptCache: () => cache }, LockService: { getScriptLock: () => ({ waitLock() { }, releaseLock() { } }) }, Math, JSON, String, Number, Date, Error });
-vm.runInContext(fs.readFileSync('apps-script/Code.gs', 'utf8'), gs);
+// Step 8: Code.gs needs the Sheet too, so it runs on the in-memory Sheet mock (tests/gas-mock.js).
+const gs = require('./gas-mock').makeGas('apps-script/Code.gs'); gs.__as('', 'setupTabs');
+gs.__sheets.Roster.getRange(2, 1, 2, 3).setValues([['host.coach@school.test', 'Host Coach', '1'], ['guest.coach@school.test', 'Guest Coach', '1']]);
+gs.__sheets.Settings.getRange(3, 2).setValue('Quick');
+const store = gs.__cache;
 const html = fs.readFileSync(path.resolve('game/index.html'));
 const server = http.createServer((q, r) => { r.writeHead(200, { 'Content-Type': 'text/html' }); r.end(html); }).listen(0);
 const FAKE_GAS = () => {
@@ -18,13 +19,15 @@ const FAKE_GAS = () => {
   const pages = [];
   for (let i = 0; i < 2; i++) { // separate contexts = separate computers (no shared browser storage)
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-    await ctx.exposeFunction('gasCall', (fn, args) => JSON.stringify(gs[fn](...JSON.parse(args))));
+    const email = ['host.coach@school.test', 'guest.coach@school.test'][i];
+    await ctx.exposeFunction('gasCall', (fn, args) => JSON.stringify(gs.__as(email, fn, JSON.parse(args))));
     await ctx.addInitScript(FAKE_GAS);
     const p = await ctx.newPage(); p.on('pageerror', e => { console.log('ERR', e.message); fails++; });
     await p.goto(`http://localhost:${server.address().port}/?len=Quick`); pages.push(p);
   }
   const [A, B] = pages;
   ok(await A.evaluate(() => USE_GAS), 'page uses the Apps Script functions');
+  await A.waitForSelector('#title.show'); await B.waitForSelector('#title.show');
   await A.click('#h2hBtn'); await A.waitForFunction(() => /^[A-Z]{4}$/.test(document.querySelector('#netBig').textContent));
   const code = await A.textContent('#netBig');
   await B.click('#joinOpen'); await B.fill('#joinCode', code); await B.click('#joinBtn');
@@ -41,5 +44,6 @@ const FAKE_GAS = () => {
   const logs = await Promise.all([A, B].map(p => p.evaluate(() => JSON.stringify(G.syncLog))));
   ok(logs[0] === logs[1], `full Quick game matched on both computers (${JSON.parse(logs[0]).length} plays)`);
   ok([...store.keys()].every(k => k.startsWith('h2h_' + code)), `cache keys used: ${store.size}`);
+  ok(gs.__sheets.Games.rows().length === 2, 'one Games row for the game');
   await browser.close(); server.close(); process.exit(fails ? 1 : 0);
 })();

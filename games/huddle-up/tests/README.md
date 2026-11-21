@@ -5,7 +5,8 @@ Run from `games/huddle-up` after `bash src/build-game.sh`:
 - `node tests/step4-test.js [outdir]` - injuries, trainer icon, guess-flag lock, break screen spending, rating cap and floor, computer break points.
 - `node tests/step5-test.js [outdir]` - computer coach: tendency reads, late-game calls, 4th down, miss rates by difficulty, Comets penalties and injuries.
 - `node tests/step6-test.js [outdir] [games]` - Head-to-Head in two windows: game codes, join errors, secret calls, same result on both screens, full games matched play by play, leaving.
-- `node tests/step6-gas-test.js` - Head-to-Head through apps-script/Code.gs (CacheService mocked) with two separate browsers.
+- `node tests/step6-gas-test.js` - Head-to-Head through apps-script/Code.gs (Sheet and CacheService mocked) with two separate browsers.
 - `node tests/step7-test.js [outdir]` - special teams: kick math, animations for every kick outcome, kickoff / extra point / field goal / punt / safety / halftime flow.
+- `node tests/step8-test.js [outdir]` - Sheet connection: Code.gs on an in-memory Sheet (tests/gas-mock.js). Set up tabs, Roster sign-in and accommodations, period sign-up, backup codes, Sets, teacher PIN and settings, play clock, Results and Games rows (Head-to-Head written once), reports.
 - `node tests/balance-test.js` - Monte Carlo of the result math; checks right answers beat higher ratings.
 Playwright path in the scripts: `/opt/npm-tools/node_modules/playwright`; Chrome: `/usr/bin/google-chrome`.

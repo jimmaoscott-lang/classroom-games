@@ -1,4 +1,4 @@
-// Huddle Up: game flow (build step 6). Solo: Pelicans = the student coach, Comets = computer coach.
+// Huddle Up: game flow (build step 8). Solo: Pelicans = the student coach, Comets = computer coach.
 // Head-to-Head: G.me is this computer's team ('home' Pelicans or 'away' Comets), G.net is set (see net.js).
 
 function newGame(opts) {
@@ -14,11 +14,12 @@ function newGame(opts) {
   G = { me: opts.me || 'home', net: opts.net || null,
     score: { home: 0, away: 0 }, poss: 'away', ballX: 65, down: 1, toGo: 10, play: 0, seq: 0, pending: { kind: 'kickoff', kicker: 'away' }, points: 0, right: 0, wrong: 0,
     ratings, deck: [], camX: 33, mode: 'call', actors: [], ball: null, flag: null, halftimeDone: false,
-    accom: { readAloud: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
+    // Accommodations: Roster checkboxes (test link: the test options). Read aloud for everyone is a teacher setting.
+    accom: { readAloud: $('#optRA').checked || READ_ALL, rosterRA: $('#optRA').checked, reduced: $('#optRC').checked, extended: $('#optET').checked },
     streak: 0, wrongRun: [], flags: 0, lockUntil: 0, log: [], cpuPoints: 0, injuries: 0, spent: 0,
     brk: { poss: 'home', score: 0 }, hist: { off: [], def: [] }, cpuStreak: 0, cpuInjuries: 0,
   };
-  G.defCall = null; setFormation();
+  G.started = !!opts.play; G.defCall = null; setFormation();
   G.camX = camTarget(G.ballX, dir());
   updateHud(); showCalls();
 }
@@ -266,12 +267,14 @@ function openHuddle(attempt, side) {
   $('#huddle').classList.add('show');
   G.clockStart = performance.now();
   if (G.accom.readAloud) { readQuestion(); G.clockStart += 1000 * questionWords() / 2.6; } // reading time starts after read-aloud
+  G.clockLimit = PLAY_CLOCK ? PLAY_CLOCK * (G.accom.extended ? 2 : 1) : 0;                // play clock (teacher setting), doubled for extended time
+  $('#hClock').style.display = 'none';
 }
 // Guessing check (Studio 68 rule): faster than 1 s + 0.25 s per word of question and choices.
 const countWords = t => String(t).trim().split(/\s+/).filter(Boolean).length;
 const questionWords = () => G.q.choices.reduce((n, c) => n + countWords(c.text), countWords(G.q.src.q));
 const minReadSeconds = () => (1 + 0.25 * questionWords()) * (G.accom.extended ? EXTENDED_TIME : 1);
-function accomText() { const a = []; if (G.accom.readAloud) a.push('Read aloud'); if (G.accom.extended) a.push('Extended time'); if (G.accom.reduced) a.push('Reduced choices'); return a.join(', '); }
+function accomText() { const a = []; if (G.accom.rosterRA) a.push('Read aloud'); if (G.accom.extended) a.push('Extended time'); if (G.accom.reduced) a.push('Reduced choices'); return a.join(', '); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function readQuestion() { speak(G.q.src.q + '. ' + G.q.choices.map((c, i) => 'ABCD'[i] + '. ' + c.text).join('. ')); }
 function speak(text) { try { if (!window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; speechSynthesis.speak(u); } catch (e) { } }
@@ -279,14 +282,16 @@ function stopSpeech() { try { window.speechSynthesis && speechSynthesis.cancel()
 
 function answer(i) {
   if (G.answered || performance.now() < G.lockUntil) return; G.answered = true;
-  const c = G.q.choices[i], off = G.hSide === 'offense', kick = KICK_PHASES.includes(G.hSide);
-  const fast = (performance.now() - G.clockStart) / 1000 < minReadSeconds();
-  // One log row per answer (saved to the Results tab once the Sheet is connected in step 9).
+  const timeUp = i < 0; // play clock ran out
+  const c = timeUp ? { text: '', right: false } : G.q.choices[i], off = G.hSide === 'offense', kick = KICK_PHASES.includes(G.hSide);
+  const fast = !timeUp && (performance.now() - G.clockStart) / 1000 < minReadSeconds();
+  // One log row per answer (sent to the Results tab of the class Sheet).
   const entry = { time: Date.now(), question: G.q.src.q, teks: G.q.src.teks || '', result: c.right ? 'Right' : 'Wrong', accom: accomText(), guess: false,
-    event: HUDDLE_NAMES[G.hSide] + (G.attempt === 2 ? ' · second chance' : '') };
-  G.log.push(entry);
+    event: HUDDLE_NAMES[G.hSide] + (G.attempt === 2 ? ' · second chance' : '') + (timeUp ? ' · play clock ran out' : '') + (G.net ? ' · Head-to-Head' : '') };
+  G.log.push(entry); logAnswer(entry);
   $$('.choice').forEach((b, j) => { b.disabled = true; if (G.q.choices[j].right) b.classList.add('right'); });
-  if (!c.right) $$('.choice')[i].classList.add('wrong');
+  if (!c.right && !timeUp) $$('.choice')[i].classList.add('wrong');
+  $('#hClock').style.display = 'none';
   const fb = $('#fb'), next = $('#hNext');
   let extra = '';
   if (c.right) {
@@ -297,7 +302,7 @@ function answer(i) {
     fb.textContent = G.attempt === 1 ? `Correct! Clean ${off || kick ? 'execution' : 'read by the defense'}. +2 skill points.` : 'Correct! Confusion cleared up. +1 skill point.';
     next.textContent = goText(); next.onclick = G.net ? sendReady : snap;
   } else {
-    G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: i, entry });
+    G.wrong++; G.streak++; G.wrongRun.push({ fast, pos: timeUp ? null : i, entry });
     fb.className = 'bad';
     if (G.attempt === 1) {
       fb.textContent = 'Not quite. Penalty: ' + firstMissPenalty(G.hSide) + ' Answer one more to clear it up.';
@@ -308,8 +313,9 @@ function answer(i) {
     if (G.streak >= INJURY_STREAK) { G.streak = 0; extra += ' ' + injurePlayer(G.me); }
     const g = checkGuessing(); if (g) extra += ' ' + g;
     fb.textContent += extra;
+    if (timeUp) fb.textContent = fb.textContent.replace(/^Not quite\./, 'Play clock ran out.');
   }
-  if (G.accom.readAloud) speak((c.right ? 'Correct. ' : 'Not quite. The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.)\s*/, ''));
+  if (G.accom.readAloud) speak((c.right ? 'Correct. ' : (timeUp ? 'Time is up. ' : 'Not quite. ') + 'The correct answer is: ' + G.q.src.a + '. ') + fb.textContent.replace(/^(Correct!|Not quite\.|Play clock ran out\.)\s*/, ''));
   updateHud();
   next.style.display = 'block';
 }
@@ -339,7 +345,7 @@ function tickInjuries() {
 function checkGuessing() {
   const run = G.wrongRun; if (run.length < 3) return '';
   const last = run.slice(-3);
-  if (!last.every(w => w.fast) && !last.every(w => w.pos === last[0].pos)) return '';
+  if (!last.every(w => w.fast) && !(last[0].pos != null && last.every(w => w.pos === last[0].pos))) return '';
   last.forEach(w => w.entry.guess = true);
   G.wrongRun = []; G.flags++;
   const secs = G.flags === 1 ? 5 : 10;
@@ -540,17 +546,20 @@ function banner(b1, b2, cls) { $('#b1').textContent = b1; $('#b1').style.fontSiz
 function hideBanner() { $('#banner').className = ''; }
 function showFinal() {
   G.mode = 'final'; if (G.net) netStop();
+  logGameRow(true); flushLog(true);
+  $('#copyBox').style.display = 'none'; $('#copyMsg').textContent = '';
   $('#fHome').textContent = G.score.home; $('#fAway').textContent = G.score.away;
   const h = G.score.home, a = G.score.away;
   const win = h > a ? 'home' : h < a ? 'away' : '';
   $('#fWin').textContent = win ? `${TEAMS[win].short} win${win === G.me ? '!' : ''}` : 'Tie game';
+  const setLine = `Set: <b>${esc(APP.set ? APP.set.name : 'Sample')}</b><br>`;
   const scored = G.log.filter(e => !e.guess), ok = scored.filter(e => e.result === 'Right').length, flagged = G.log.length - scored.length;
-  $('#fStats').innerHTML = `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
+  $('#fStats').innerHTML = setLine + `Questions right: <b>${G.right}</b> · wrong: <b>${G.wrong}</b>${scored.length ? ` · <b>${Math.round(100 * ok / scored.length)}%</b> correct` : ''}` +
     (flagged ? `<br>Guess-flagged answers (left out of % correct): <b>${flagged}</b>` : '') +
     (G.net ? `<br>Head-to-Head vs the <b>${opN()}</b> coach` : `<br>Computer: <b>${DIFF}</b> · missed ${G.cpuMisses || 0} huddle question${G.cpuMisses === 1 ? '' : 's'}`) +
     `<br>Skill points spent: <b>${G.spent}</b> · unspent: <b>${G.points}</b>${G.injuries ? ` · players shaken up: <b>${G.injuries}</b>` : ''}`;
   $('#again').textContent = G.net ? 'New game' : 'Play Again';
-  $('#final').classList.add('show');
+  $('#final').classList.add('show'); saveNote();
 }
 const ord = n => ['1st', '2nd', '3rd', '4th'][n - 1] || n + 'th';
 function spot(x) { x = Math.round(x); return x === 50 ? 'the 50' : x < 50 ? `PEL ${x}` : `COM ${100 - x}`; }
@@ -574,6 +583,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (G) {
+    clockTick(now);
     if (G.mode === 'anim') {
       const t = (now - G.t0) / 1000;
       pose(G.plan, t);
@@ -594,22 +604,22 @@ $('#optRA').checked = QS.get('ra') === '1'; $('#optRC').checked = QS.get('rc') =
 $('#ver').textContent = 'Build ' + INDEX_VERSION + ' · +1 = ' + RATING_PER_POINT + ' rating';
 // Test pickers for the teacher settings (students will not see these once the gear menu exists).
 $('#optLen').value = LENGTH; $('#optDiff').value = DIFF;
-const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTH} game: 4 quarters, ${PLAYS_PER_QUARTER} plays each.`; };
+const titleBlurb = () => { $('#lenTxt').textContent = `${LENGTHS[LENGTH] ? LENGTH : 'Custom'} game: 4 quarters, ${PLAYS_PER_QUARTER} plays each.`; };
 $('#optLen').onchange = $('#optDiff').onchange = () => { applySettings($('#optLen').value, $('#optDiff').value); titleBlurb(); updateHud(); };
 titleBlurb();
-$('#kick').onclick = () => { $('#title').classList.remove('show'); newGame(); };
-$('#again').onclick = () => { $('#final').classList.remove('show'); if (G.net) { newGame(); G.mode = 'title'; $('#title').classList.add('show'); } else newGame(); };
-$('#h2hBtn').onclick = () => { newGame(); hostGame(); };
+$('#kick').onclick = () => pickSet(() => { $('#title').classList.remove('show'); newGame({ play: true }); });
+$('#again').onclick = () => { $('#final').classList.remove('show'); if (G.net) { newGame(); showTitle(); } else newGame({ play: true }); };
+$('#h2hBtn').onclick = () => pickSet(() => { newGame(); hostGame(); }); // the coach who makes the game picks the set
 $('#joinOpen').onclick = () => { newGame(); joinScreen(); };
 $('#joinBtn').onclick = joinGame;
 $('#joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame(); };
-$('#netBack').onclick = () => { $('#net').classList.remove('show'); $('#title').classList.add('show'); G.mode = 'title'; };
-$$('[data-exit]').forEach(b => b.onclick = () => { netLeave(); $('#net').classList.remove('show'); stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); $('#title').classList.add('show'); newGame(); G.mode = 'title'; });
+$('#netBack').onclick = () => showTitle();
+$$('[data-exit]').forEach(b => b.onclick = () => { endGameEarly(); netLeave(); $('#net').classList.remove('show'); stopSpeech(); closeHuddle(); $('#break').classList.remove('show'); G.lockUntil = 0; $('#lock').classList.remove('on'); $('#final').classList.remove('show'); newGame(); showTitle(); });
 $('#hSpeak').onclick = readQuestion;
 $('#plusBtn').onclick = spendPoint;
 $('#bkDone').onclick = closeBreak;
 addEventListener('keydown', e => {
   if (G && G.mode === 'huddle' && !G.answered && document.activeElement !== $('#joinCode')) { const k = 'abcd'.indexOf(e.key.toLowerCase()); const n = '1234'.indexOf(e.key); const i = k >= 0 ? k : n; if (i >= 0 && i < G.q.choices.length) answer(i); }
 });
-newGame(); G.mode = 'title';
+newGame(); G.mode = 'title'; startup();
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
